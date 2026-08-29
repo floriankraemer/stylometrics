@@ -1,0 +1,75 @@
+# Stylometry Pipeline
+
+Dockerized pipeline that analyzes an author's writing style and produces:
+
+1. **`<name>_report.html`** — human-readable style report.
+2. **`<name>_profile.md`** — the same analysis as structured Markdown, meant to be pasted straight into an LLM's context.
+3. **`<name>_clone_prompt.md`** — a ready-to-use system prompt that encodes the measured voice, for cloning the author's style elsewhere.
+
+It combines quantitative stylometrics (lexical diversity, function-word frequency, POS/syntax, punctuation profile, sentence-length burstiness) with rule-based qualitative heuristics (tone/stance signals, rhetorical questions, anaphora, rule-of-three). A true LLM-assisted qualitative pass is available as an opt-in flag.
+
+## Requirements
+
+- Docker
+- `make`
+
+## Quick start
+
+```sh
+make build
+
+# analyze a local file — drop it in input/ first
+cp ~/Downloads/some-book.pdf input/
+make analyze FILE=input/some-book.pdf
+
+# analyze one web page
+make analyze URL=https://example.com/some-essay
+
+# crawl a whole site (same domain, BFS, robots.txt respected)
+make analyze URL=https://example.com CRAWL=1 MAX_PAGES=100
+```
+
+Results land in `output/`.
+
+## Supported input formats
+
+PDF, DOCX, plain text / Markdown, EPUB, a single web page (URL or local `.html`), or a whole site via `CRAWL=1`.
+
+## Optional LLM-assisted qualitative pass
+
+Off by default (fully offline otherwise). Enable with `LLM=1`:
+
+```sh
+export ANTHROPIC_API_KEY=sk-...
+make analyze FILE=input/book.pdf LLM=1
+# or
+export OPENAI_API_KEY=sk-...
+make analyze FILE=input/book.pdf LLM=1 PROVIDER=openai
+```
+
+This sends a text sample plus the computed quantitative metrics to the chosen provider and adds a "Rhetoric" section (tone/register, rhetorical devices, cadence, persuasion style) to all three outputs.
+
+## Commands
+
+| Command | Does |
+|---|---|
+| `make build` | Build the Docker image |
+| `make analyze FILE=...` | Analyze a local file under `input/` |
+| `make analyze URL=...` | Analyze one web page |
+| `make analyze URL=... CRAWL=1 [MAX_PAGES=N]` | Crawl a whole site (default `MAX_PAGES=50`) and analyze the combined text |
+| `make shell` | Drop into the container for debugging |
+| `make clean` | Remove generated files from `output/` |
+
+## Project layout
+
+```
+src/stylometry/
+├── cli.py            entrypoint
+├── ingest.py          PDF/DOCX/TXT/MD/EPUB/URL/site-crawl -> plain text
+├── preprocess.py       single spaCy pass shared by all metrics
+├── metrics/            lexical, function_words, syntax, punctuation, burstiness
+├── qualitative/         heuristics.py (default), llm.py (opt-in)
+└── report/              profile.py assembles the data; html_report/profile_md/clone_prompt render it
+```
+
+See `docs/` for implementation notes (e.g. why `numpy` is pinned).
