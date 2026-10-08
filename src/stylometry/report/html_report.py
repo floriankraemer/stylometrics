@@ -1,6 +1,7 @@
 from jinja2 import Template
 
-_TEMPLATE = Template("""\
+# autoescape: source names, LLM output and quoted text all come from untrusted input
+_TEMPLATE = Template(autoescape=True, source="""\
 <!doctype html>
 <html>
 <head>
@@ -14,9 +15,9 @@ _TEMPLATE = Template("""\
   th, td { text-align: left; padding: .3rem .6rem; border-bottom: 1px solid #eee; }
   th { background: #f5f5f0; }
   .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem 1.5rem; }
-  .metric { display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding: .2rem 0; }
-  .metric .label { color: #555; }
-  .metric .value { font-weight: bold; }
+  .metric { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; border-bottom: 1px dotted #ddd; padding: .2rem 0; }
+  .metric .label { color: #555; min-width: 0; overflow-wrap: break-word; }
+  .metric .value { font-weight: bold; flex-shrink: 0; }
   p.note { color: #666; font-size: .9rem; }
 </style>
 </head>
@@ -62,10 +63,11 @@ _TEMPLATE = Template("""\
 
 <h2>6. Perspective &amp; Stance (heuristic)</h2>
 <div class="metric-grid">
-<div class="metric"><span class="label">rhetorical_question_rate_per_100_sentences</span><span class="value">{{ profile.qualitative.heuristics.rhetorical_question_rate_per_100_sentences }}</span></div>
-<div class="metric"><span class="label">hedging_rate_per_1000_words</span><span class="value">{{ profile.qualitative.heuristics.hedging_rate_per_1000_words }}</span></div>
-<div class="metric"><span class="label">assertiveness_rate_per_1000_words</span><span class="value">{{ profile.qualitative.heuristics.assertiveness_rate_per_1000_words }}</span></div>
-<div class="metric"><span class="label">rule_of_three_occurrences</span><span class="value">{{ profile.qualitative.heuristics.rule_of_three_occurrences }}</span></div>
+<div class="metric"><span class="label">rhetorical_<wbr>question_<wbr>rate_<wbr>per_<wbr>100_<wbr>sentences</span><span class="value">{{ profile.qualitative.heuristics.rhetorical_question_rate_per_100_sentences }}</span></div>
+<div class="metric"><span class="label">hedging_<wbr>rate_<wbr>per_<wbr>1000_<wbr>words</span><span class="value">{{ profile.qualitative.heuristics.hedging_rate_per_1000_words }}</span></div>
+<div class="metric"><span class="label">assertiveness_<wbr>rate_<wbr>per_<wbr>1000_<wbr>words</span><span class="value">{{ profile.qualitative.heuristics.assertiveness_rate_per_1000_words }}</span></div>
+<div class="metric"><span class="label">rule_<wbr>of_<wbr>three_<wbr>occurrences</span><span class="value">{{ profile.qualitative.heuristics.rule_of_three_occurrences }}</span></div>
+<div class="metric"><span class="label">narrative_<wbr>voice</span><span class="value">{{ profile.qualitative.heuristics.narrative_voice }}</span></div>
 </div>
 <p><strong>Pronoun distribution:</strong>
 {% for k, v in profile.qualitative.heuristics.pronoun_distribution.items() %}{{ k }}: {{ v }}&nbsp;&nbsp;{% endfor %}

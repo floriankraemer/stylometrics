@@ -36,6 +36,7 @@ def render(profile: dict) -> str:
         f"- hedging_rate_per_1000_words: {h['hedging_rate_per_1000_words']}",
         f"- assertiveness_rate_per_1000_words: {h['assertiveness_rate_per_1000_words']}",
         f"- rule_of_three_occurrences: {h['rule_of_three_occurrences']}",
+        f"- narrative_voice: {h['narrative_voice']}",
         "",
         "### Pronoun distribution",
         pronoun_lines,

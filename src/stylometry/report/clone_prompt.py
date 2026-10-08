@@ -4,8 +4,6 @@ def render(profile: dict) -> str:
     llm = profile["qualitative"].get("llm")
 
     top_fw = ", ".join(f"\"{fw['word']}\"" for fw in q["function_words"][:10])
-    pron = h["pronoun_distribution"]
-    dominant_person = max(pron, key=pron.get) if pron else "unknown"
 
     lines = [
         f"# Style-Clone System Prompt — derived from: {profile['source']}",
@@ -37,7 +35,7 @@ def render(profile: dict) -> str:
         f"- Exclamation marks: {q['punctuation']['exclamation']} per 1000 words.",
         "",
         "## Voice & Stance",
-        f"- Dominant grammatical person: {dominant_person}.",
+        f"- Narrative voice: {h['narrative_voice']}.",
         f"- Hedging rate: {h['hedging_rate_per_1000_words']} per 1000 words "
         f"({'hedges frequently' if h['hedging_rate_per_1000_words'] > 3 else 'rarely hedges, prefers direct assertions'}).",
         f"- Assertiveness rate: {h['assertiveness_rate_per_1000_words']} per 1000 words.",

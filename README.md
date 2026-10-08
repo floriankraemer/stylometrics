@@ -49,6 +49,11 @@ make analyze FILE=input/book.pdf LLM=1 PROVIDER=openai
 
 This sends a text sample plus the computed quantitative metrics to the chosen provider and adds a "Rhetoric" section (tone/register, rhetorical devices, cadence, persuasion style) to all three outputs.
 
+## Examples
+
+`examples/` contains two public-domain corpora with their generated reports: Marcus Aurelius's *Meditations* and a volume of Edgar Allan Poe's tales.
+See [docs/examples.md](docs/examples.md) for where the texts come from, the measured results side by side, and how to read them.
+
 ## Commands
 
 | Command | Does |
@@ -57,6 +62,8 @@ This sends a text sample plus the computed quantitative metrics to the chosen pr
 | `make analyze FILE=...` | Analyze a local file under `input/` |
 | `make analyze URL=...` | Analyze one web page |
 | `make analyze URL=... CRAWL=1 [MAX_PAGES=N]` | Crawl a whole site (default `MAX_PAGES=50`) and analyze the combined text |
+| `make examples` | Re-run the analysis for every text under `examples/` |
+| `make test` | Run the unit tests inside the container |
 | `make shell` | Drop into the container for debugging |
 | `make clean` | Remove generated files from `output/` |
 
@@ -70,6 +77,15 @@ src/stylometry/
 ├── metrics/            lexical, function_words, syntax, punctuation, burstiness
 ├── qualitative/         heuristics.py (default), llm.py (opt-in)
 └── report/              profile.py assembles the data; html_report/profile_md/clone_prompt render it
+examples/               public-domain sample texts and their generated outputs
+tests/                  unit tests, run with `make test`
 ```
 
 See `docs/` for implementation notes (e.g. why `numpy` is pinned).
+
+## License
+
+Copyright (C) 2026 Florian Krämer
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+See [LICENSE](LICENSE) for the full text.
