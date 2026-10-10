@@ -9,7 +9,7 @@ from stylometry.qualitative import llm as llm_qualitative
 from stylometry.report import clone_prompt, html_report, profile_md
 from stylometry.report.profile import build
 
-OUTPUT_DIR = Path("/output")
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "/output"))
 
 
 def main():
@@ -50,7 +50,7 @@ def main():
     profile_md.write(profile, OUTPUT_DIR / f"{base}_profile.md")
     clone_prompt.write(profile, OUTPUT_DIR / f"{base}_clone_prompt.md")
 
-    print(f"[stylometry] wrote {base}_report.html, {base}_profile.md, {base}_clone_prompt.md to /output", file=sys.stderr)
+    print(f"[stylometry] wrote {base}_report.html, {base}_profile.md, {base}_clone_prompt.md to {OUTPUT_DIR}", file=sys.stderr)
 
 
 if __name__ == "__main__":
