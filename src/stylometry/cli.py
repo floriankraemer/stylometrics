@@ -5,17 +5,19 @@ from pathlib import Path
 
 from stylometry import __version__
 from stylometry.ingest import load_text
-from stylometry.preprocess import analyze
-from stylometry.qualitative import llm as llm_qualitative
+from stylometry import pipeline
 from stylometry.report import clone_prompt, html_report, profile_md
-from stylometry.report.profile import build
 
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="stylometry")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument("source", help="path to input file or a URL")
+    parser.add_argument("source", nargs="?", help="path to input file or a URL (not needed with --serve)")
+    parser.add_argument("--serve", action="store_true", help="run the HTTP API server instead of analyzing a source")
+    parser.add_argument("--host", default="127.0.0.1", help="bind address for --serve (default 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)),
+                         help="port for --serve (default: $PORT or 8000)")
     parser.add_argument("--llm", action="store_true", default=os.environ.get("LLM_ENABLED") == "1",
                          help="enable LLM-assisted qualitative analysis (opt-in)")
     parser.add_argument("--provider", default=os.environ.get("LLM_PROVIDER", "anthropic"),
@@ -28,6 +30,16 @@ def main(argv=None):
                          help="directory for the generated files (default: $OUTPUT_DIR or ./output)")
     args = parser.parse_args(argv)
 
+    if args.serve:
+        import uvicorn
+
+        from stylometry.server.app import app
+
+        uvicorn.run(app, host=args.host, port=args.port)
+        return
+    if not args.source:
+        parser.error("source is required unless --serve is given")
+
     print(f"[stylometry] loading: {args.source}" + (f" (crawling up to {args.max_pages} pages)" if args.crawl else ""), file=sys.stderr)
     text = load_text(args.source, crawl=args.crawl, max_pages=args.max_pages)
     if not text.strip():
@@ -35,16 +47,10 @@ def main(argv=None):
         sys.exit(1)
 
     print("[stylometry] running spaCy analysis...", file=sys.stderr)
-    analysis = analyze(text)
-
-    llm_result = None
+    source_name = args.source.rstrip("/").split("/")[-1]
     if args.llm:
         print(f"[stylometry] running LLM-assisted qualitative pass ({args.provider})...", file=sys.stderr)
-        preliminary = build(analysis, args.source)
-        llm_result = llm_qualitative.compute(text, preliminary["quantitative"], args.provider)
-
-    source_name = args.source.rstrip("/").split("/")[-1]
-    profile = build(analysis, source_name, llm_result=llm_result)
+    profile = pipeline.run(text, source_name, llm=args.llm, provider=args.provider)
 
     args.output.mkdir(parents=True, exist_ok=True)
     base = Path(source_name).stem or "output"

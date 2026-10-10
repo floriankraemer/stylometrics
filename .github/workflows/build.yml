@@ -44,6 +44,16 @@ jobs:
           "$exe" --version | grep -F "${{ inputs.version }}"
           "$exe" examples/poe/tales.txt --output smoke
           for f in tales_report.html tales_profile.md tales_clone_prompt.md; do test -s "smoke/$f"; done
+      - name: Smoke test server mode
+        run: |
+          exe=dist/stylometry/stylometry
+          [ "${{ runner.os }}" = Windows ] && exe+=.exe
+          "$exe" --serve --port 8765 &
+          pid=$!
+          for i in $(seq 60); do curl -fs localhost:8765/healthz && break; sleep 1; done
+          curl -fs localhost:8765/analyze -H 'content-type: application/json' -d '{"text":"I walked home. It was late."}' | grep -F '"sentence_count":2'
+          curl -s localhost:8765/analyze -d '{}' -H 'content-type: application/json' | grep -F 'urn:stylometry:problem:validation-error'
+          kill $pid
       - name: Archive
         run: |
           name="stylometry_${{ inputs.version }}_${{ matrix.target }}"

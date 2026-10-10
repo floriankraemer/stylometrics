@@ -93,6 +93,13 @@ make test
 make binary
 ```
 
+## Server mode
+
+`stylometry --serve --port 8080` starts an HTTP API: post JSON or a file, get the analysis back as JSON.
+Errors use RFC 9457 Problem Details.
+It also runs on AWS Lambda through `Dockerfile.lambda`.
+See [docs/server.md](docs/server.md) for endpoints, configuration, and deployment.
+
 ## Supported input formats
 
 PDF, DOCX, plain text / Markdown, EPUB, a single web page (URL or local `.html`), or a whole site via `CRAWL=1`.
@@ -126,6 +133,7 @@ See [docs/examples.md](docs/examples.md) for where the texts come from, the meas
 | `make analyze URL=... CRAWL=1 [MAX_PAGES=N]` | Crawl a whole site (default `MAX_PAGES=50`) and analyze the combined text |
 | `make examples` | Re-run the analysis for every text under `examples/` |
 | `make test` | Run the tests with coverage locally (fails under 80%) |
+| `make serve [PORT=8000]` | Run the HTTP API locally |
 | `make binary` | Build a native binary with PyInstaller into `dist/` |
 | `make shell` | Drop into the container for debugging |
 | `make clean` | Remove generated files from `output/` |
@@ -135,6 +143,8 @@ See [docs/examples.md](docs/examples.md) for where the texts come from, the meas
 ```
 src/stylometry/
 ├── cli.py            entrypoint
+├── pipeline.py        text -> profile, shared by CLI and server
+├── server/            FastAPI app, RFC 9457 problems, SSRF guard, Lambda handler
 ├── ingest.py          PDF/DOCX/TXT/MD/EPUB/URL/site-crawl -> plain text
 ├── preprocess.py       single spaCy pass shared by all metrics
 ├── metrics/            lexical, function_words, syntax, punctuation, burstiness

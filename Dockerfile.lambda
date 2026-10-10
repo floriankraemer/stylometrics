@@ -1,0 +1,11 @@
+# AWS Lambda container image: docker build -f Dockerfile.lambda -t stylometry-lambda .
+# Use >= 2048 MB memory. API Gateway caps requests at 29 s and 10 MB; Lambda at 6 MB per synchronous payload.
+FROM public.ecr.aws/lambda/python:3.12
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m spacy download en_core_web_sm
+
+COPY src/ ${LAMBDA_TASK_ROOT}/
+
+CMD ["stylometry.server.lambda_handler.handler"]

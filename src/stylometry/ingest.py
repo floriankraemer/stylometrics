@@ -11,11 +11,15 @@ from bs4 import BeautifulSoup
 USER_AGENT = "stylometry-pipeline/1.0"
 
 
-def load_text(source: str, crawl: bool = False, max_pages: int = 50, delay: float = 0.5) -> str:
+MAX_REDIRECTS = 5
+
+
+def load_text(source: str, crawl: bool = False, max_pages: int = 50, delay: float = 0.5, guard=None) -> str:
+    """guard(url), if given, is called before every HTTP request (redirect hops included) and may raise to refuse it."""
     if source.startswith("http://") or source.startswith("https://"):
         if crawl:
-            return _crawl_site(source, max_pages=max_pages, delay=delay)
-        return _from_url(source)
+            return _crawl_site(source, max_pages=max_pages, delay=delay, guard=guard)
+        return _from_url(source, guard)
 
     path = Path(source)
     suffix = path.suffix.lower()
@@ -57,15 +61,30 @@ def _from_epub(path: Path) -> str:
     return "\n".join(chunks)
 
 
-def _from_url(url: str) -> str:
-    resp = requests.get(url, timeout=30, headers={"User-Agent": USER_AGENT})
+def _get(url: str, guard=None):
+    """requests.get that checks every URL with guard; redirects are followed by hand so each hop is checked."""
+    if guard is None:
+        return requests.get(url, timeout=30, headers={"User-Agent": USER_AGENT})
+    for _ in range(MAX_REDIRECTS + 1):
+        guard(url)
+        resp = requests.get(url, timeout=30, headers={"User-Agent": USER_AGENT}, allow_redirects=False)
+        if not resp.is_redirect:
+            return resp
+        url = urljoin(url, resp.headers["Location"])
+    raise requests.TooManyRedirects(f"more than {MAX_REDIRECTS} redirects")
+
+
+def _from_url(url: str, guard=None) -> str:
+    resp = _get(url, guard)
     resp.raise_for_status()
     return _from_html(resp.text)
 
 
-def _crawl_site(start_url: str, max_pages: int, delay: float) -> str:
+def _crawl_site(start_url: str, max_pages: int, delay: float, guard=None) -> str:
     """BFS-crawl same-domain pages from start_url, respecting robots.txt, and
     concatenate their extracted text. Stays within the start URL's netloc."""
+    if guard is not None:
+        guard(start_url)  # robots.txt below is fetched by urllib, outside _get
     origin = urlparse(start_url)
     netloc = origin.netloc
 
@@ -86,7 +105,7 @@ def _crawl_site(start_url: str, max_pages: int, delay: float) -> str:
             continue
 
         try:
-            resp = requests.get(url, timeout=30, headers={"User-Agent": USER_AGENT})
+            resp = _get(url, guard)
             resp.raise_for_status()
         except requests.RequestException:
             continue

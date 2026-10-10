@@ -8,7 +8,7 @@ BUILD_INPUTS := Dockerfile requirements.txt $(shell find src -name '*.py')
 IMAGE_MISSING = $(shell docker image inspect $(IMAGE) >/dev/null 2>&1 || echo FORCE)
 
 .DEFAULT_GOAL := help
-.PHONY: help build analyze examples test binary shell clean FORCE
+.PHONY: help build analyze examples test serve binary shell clean FORCE
 
 ##@ General
 
@@ -65,6 +65,9 @@ PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
 test: ## Run tests with coverage (needs requirements-dev.txt installed; fails under 80%)
 	$(PYTHON) -m pytest
+
+serve: ## Run the HTTP API locally (PORT=8000 HOST=127.0.0.1)
+	$(PYTHON) -m stylometry.cli --serve --host $(or $(HOST),127.0.0.1) --port $(or $(PORT),8000)
 
 binary: ## Build a native binary into dist/stylometry/ with PyInstaller
 	$(PYTHON) -m PyInstaller --noconfirm packaging/stylometry.spec

@@ -50,3 +50,26 @@ def test_output_env_default(tmp_path, monkeypatch):
     monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "envout"))
     cli.main([str(src)])
     assert (tmp_path / "envout" / "essay_profile.md").exists()
+
+
+def test_source_required_without_serve():
+    with pytest.raises(SystemExit) as e:
+        cli.main([])
+    assert e.value.code == 2
+
+
+def test_serve_passes_host_and_port(monkeypatch):
+    import uvicorn
+    calls = []
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: calls.append(kw))
+    cli.main(["--serve", "--host", "0.0.0.0", "--port", "8123"])
+    assert calls == [{"host": "0.0.0.0", "port": 8123}]
+
+
+def test_serve_port_from_env(monkeypatch):
+    import uvicorn
+    calls = []
+    monkeypatch.setenv("PORT", "9001")
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: calls.append(kw))
+    cli.main(["--serve"])
+    assert calls == [{"host": "127.0.0.1", "port": 9001}]
