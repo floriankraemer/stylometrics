@@ -31,6 +31,35 @@ make analyze URL=https://example.com CRAWL=1 MAX_PAGES=100
 
 Results land in `output/`.
 
+## Running locally without Docker
+
+Needs Python 3.12.
+`requirements.txt` pins `numpy==1.26.4` for spaCy 3.7 (see [docs/numpy-pin.md](docs/numpy-pin.md)), so use a dedicated virtualenv.
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m spacy download en_core_web_sm
+```
+
+Run from the repo root.
+`OUTPUT_DIR` overrides the container default of `/output`:
+
+```sh
+export PYTHONPATH=src OUTPUT_DIR=output
+
+.venv/bin/python -m stylometry.cli input/some-book.pdf
+.venv/bin/python -m stylometry.cli https://example.com/some-essay
+.venv/bin/python -m stylometry.cli https://example.com --crawl --max-pages 100
+
+# LLM pass
+ANTHROPIC_API_KEY=sk-... .venv/bin/python -m stylometry.cli input/book.pdf --llm
+OPENAI_API_KEY=sk-... .venv/bin/python -m stylometry.cli input/book.pdf --llm --provider openai
+
+# tests
+.venv/bin/python -m unittest discover -s tests -v
+```
+
 ## Supported input formats
 
 PDF, DOCX, plain text / Markdown, EPUB, a single web page (URL or local `.html`), or a whole site via `CRAWL=1`.
