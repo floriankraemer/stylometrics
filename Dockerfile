@@ -8,5 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 COPY src/ src/
 ENV PYTHONPATH=/app/src
+ENV OUTPUT_DIR=/output
 
 ENTRYPOINT ["python", "-m", "stylometry.cli"]

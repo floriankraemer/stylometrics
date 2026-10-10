@@ -3,18 +3,19 @@ import os
 import sys
 from pathlib import Path
 
+from stylometry import __version__
 from stylometry.ingest import load_text
 from stylometry.preprocess import analyze
 from stylometry.qualitative import llm as llm_qualitative
 from stylometry.report import clone_prompt, html_report, profile_md
 from stylometry.report.profile import build
 
-OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "/output"))
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(prog="stylometry")
-    parser.add_argument("source", help="path to input file (mounted under /input) or a URL")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("source", help="path to input file or a URL")
     parser.add_argument("--llm", action="store_true", default=os.environ.get("LLM_ENABLED") == "1",
                          help="enable LLM-assisted qualitative analysis (opt-in)")
     parser.add_argument("--provider", default=os.environ.get("LLM_PROVIDER", "anthropic"),
@@ -23,7 +24,9 @@ def main():
                          help="crawl the whole site (same domain) starting from a URL source, instead of one page")
     parser.add_argument("--max-pages", type=int, default=int(os.environ.get("MAX_PAGES", 50)),
                          help="max pages to fetch when --crawl is set (default 50)")
-    args = parser.parse_args()
+    parser.add_argument("--output", type=Path, default=Path(os.environ.get("OUTPUT_DIR", "output")),
+                         help="directory for the generated files (default: $OUTPUT_DIR or ./output)")
+    args = parser.parse_args(argv)
 
     print(f"[stylometry] loading: {args.source}" + (f" (crawling up to {args.max_pages} pages)" if args.crawl else ""), file=sys.stderr)
     text = load_text(args.source, crawl=args.crawl, max_pages=args.max_pages)
@@ -43,14 +46,14 @@ def main():
     source_name = args.source.rstrip("/").split("/")[-1]
     profile = build(analysis, source_name, llm_result=llm_result)
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    args.output.mkdir(parents=True, exist_ok=True)
     base = Path(source_name).stem or "output"
 
-    html_report.write(profile, OUTPUT_DIR / f"{base}_report.html")
-    profile_md.write(profile, OUTPUT_DIR / f"{base}_profile.md")
-    clone_prompt.write(profile, OUTPUT_DIR / f"{base}_clone_prompt.md")
+    html_report.write(profile, args.output / f"{base}_report.html")
+    profile_md.write(profile, args.output / f"{base}_profile.md")
+    clone_prompt.write(profile, args.output / f"{base}_clone_prompt.md")
 
-    print(f"[stylometry] wrote {base}_report.html, {base}_profile.md, {base}_clone_prompt.md to {OUTPUT_DIR}", file=sys.stderr)
+    print(f"[stylometry] wrote {base}_report.html, {base}_profile.md, {base}_clone_prompt.md to {args.output}", file=sys.stderr)
 
 
 if __name__ == "__main__":

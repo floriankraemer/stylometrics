@@ -31,6 +31,34 @@ make analyze URL=https://example.com CRAWL=1 MAX_PAGES=100
 
 Results land in `output/`.
 
+## Download a prebuilt binary
+
+Every release on the [Releases page](https://github.com/floriankraemer/stylometrics/releases) ships native binaries for Linux (x86_64, arm64), macOS (x86_64, arm64), and Windows (x86_64).
+No Python or Docker needed.
+
+- **`vX.Y.Z`** releases are stable, tagged versions.
+- **`latest`** is a rolling prerelease rebuilt from the head of `main` on every push.
+
+Each release includes a `SHA256SUMS` file.
+
+```sh
+tar -xzf stylometry_<version>_linux-x86_64.tar.gz
+./stylometry_<version>_linux-x86_64/stylometry some-book.pdf --output out
+```
+
+The binaries are not code-signed.
+On macOS, clear the quarantine flag once: `xattr -dr com.apple.quarantine stylometry_*`.
+On Windows, SmartScreen may ask you to confirm the first run.
+
+To cut a release, push a strict semver tag:
+
+```sh
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+Tags with a suffix such as `v1.2.3-rc.1` are published as prereleases.
+A tag that is not `vMAJOR.MINOR.PATCH[-pre]` fails the release workflow.
+
 ## Running locally without Docker
 
 Needs Python 3.12.
@@ -43,10 +71,11 @@ python3 -m venv .venv
 ```
 
 Run from the repo root.
-`OUTPUT_DIR` overrides the container default of `/output`:
+Results go to `./output` by default.
+Use `--output DIR` or `OUTPUT_DIR` to change that.
 
 ```sh
-export PYTHONPATH=src OUTPUT_DIR=output
+export PYTHONPATH=src
 
 .venv/bin/python -m stylometry.cli input/some-book.pdf
 .venv/bin/python -m stylometry.cli https://example.com/some-essay
@@ -56,8 +85,12 @@ export PYTHONPATH=src OUTPUT_DIR=output
 ANTHROPIC_API_KEY=sk-... .venv/bin/python -m stylometry.cli input/book.pdf --llm
 OPENAI_API_KEY=sk-... .venv/bin/python -m stylometry.cli input/book.pdf --llm --provider openai
 
-# tests
-.venv/bin/python -m unittest discover -s tests -v
+# tests (coverage must stay at 80% or more)
+.venv/bin/pip install -r requirements-dev.txt
+make test
+
+# native binary into dist/stylometry/
+make binary
 ```
 
 ## Supported input formats
@@ -92,7 +125,8 @@ See [docs/examples.md](docs/examples.md) for where the texts come from, the meas
 | `make analyze URL=...` | Analyze one web page |
 | `make analyze URL=... CRAWL=1 [MAX_PAGES=N]` | Crawl a whole site (default `MAX_PAGES=50`) and analyze the combined text |
 | `make examples` | Re-run the analysis for every text under `examples/` |
-| `make test` | Run the unit tests inside the container |
+| `make test` | Run the tests with coverage locally (fails under 80%) |
+| `make binary` | Build a native binary with PyInstaller into `dist/` |
 | `make shell` | Drop into the container for debugging |
 | `make clean` | Remove generated files from `output/` |
 
@@ -107,7 +141,9 @@ src/stylometry/
 ├── qualitative/         heuristics.py (default), llm.py (opt-in)
 └── report/              profile.py assembles the data; html_report/profile_md/clone_prompt render it
 examples/               public-domain sample texts and their generated outputs
-tests/                  unit tests, run with `make test`
+tests/                  pytest suite, run with `make test`
+packaging/              PyInstaller entry point and spec
+.github/workflows/      test, build matrix, release (tags) and latest (main)
 ```
 
 See `docs/` for implementation notes (e.g. why `numpy` is pinned).

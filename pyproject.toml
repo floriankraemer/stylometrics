@@ -1,0 +1,15 @@
+[project]
+name = "stylometry"
+dynamic = ["version"]
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--cov --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/stylometry"]
+
+[tool.coverage.report]
+fail_under = 80

@@ -1,0 +1,53 @@
+name: latest
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: latest
+  cancel-in-progress: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        run: echo "version=0.0.0-latest+${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [test, version]
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          pattern: stylometry-*
+          merge-multiple: true
+      - run: cd assets && sha256sum * > SHA256SUMS
+      # delete + create (not edit) so assets from older runs never linger
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
+          git tag -f latest "$GITHUB_SHA"
+          git push -f origin latest
+          gh release create latest assets/* --repo "$GITHUB_REPOSITORY" --prerelease \
+            --title "latest (main @ ${GITHUB_SHA::7})" \
+            --notes "Rolling build of the head of \`main\` at $GITHUB_SHA. Use a \`vX.Y.Z\` release for stable binaries."

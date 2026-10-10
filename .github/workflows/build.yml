@@ -1,0 +1,62 @@
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version stamped into the binary and archive names
+        required: true
+        type: string
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x86_64 }
+          - { os: ubuntu-24.04-arm, target: linux-arm64 }
+          - { os: macos-13, target: macos-x86_64 }
+          - { os: macos-latest, target: macos-arm64 }
+          - { os: windows-latest, target: windows-x86_64 }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m spacy download en_core_web_sm
+      - name: Stamp version
+        run: sed -i.bak 's|^__version__ = .*|__version__ = "${{ inputs.version }}"|' src/stylometry/__init__.py
+      - run: python -m PyInstaller --noconfirm packaging/stylometry.spec
+      - name: Smoke test frozen binary
+        run: |
+          exe=dist/stylometry/stylometry
+          [ "${{ runner.os }}" = Windows ] && exe+=.exe
+          "$exe" --version | grep -F "${{ inputs.version }}"
+          "$exe" examples/poe/tales.txt --output smoke
+          for f in tales_report.html tales_profile.md tales_clone_prompt.md; do test -s "smoke/$f"; done
+      - name: Archive
+        run: |
+          name="stylometry_${{ inputs.version }}_${{ matrix.target }}"
+          mv dist/stylometry "$name"
+          if [ "${{ runner.os }}" = Windows ]; then
+            7z a "$name.zip" "$name" > /dev/null
+            echo "ARCHIVE=$name.zip" >> "$GITHUB_ENV"
+          else
+            tar -czf "$name.tar.gz" "$name"
+            echo "ARCHIVE=$name.tar.gz" >> "$GITHUB_ENV"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stylometry-${{ matrix.target }}
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error

@@ -2,9 +2,13 @@ IMAGE := stylometry
 PROVIDER ?= anthropic
 # run as the host user so files written to bind mounts are not root-owned
 RUN := docker run --rm --user $(shell id -u):$(shell id -g)
+# rebuild only when the build inputs change, or the image is gone
+STAMP := .build/image.stamp
+BUILD_INPUTS := Dockerfile requirements.txt $(shell find src -name '*.py')
+IMAGE_MISSING = $(shell docker image inspect $(IMAGE) >/dev/null 2>&1 || echo FORCE)
 
 .DEFAULT_GOAL := help
-.PHONY: help build analyze examples test shell clean
+.PHONY: help build analyze examples test binary shell clean FORCE
 
 ##@ General
 
@@ -16,8 +20,12 @@ help: ## Show this help
 
 ##@ Build
 
-build: ## Build the Docker image
+build: ## Force a rebuild of the Docker image
+	@rm -f $(STAMP) && $(MAKE) --no-print-directory $(STAMP)
+
+$(STAMP): $(BUILD_INPUTS) $(IMAGE_MISSING)
 	docker build -t $(IMAGE) .
+	@mkdir -p $(dir $@) && touch $@
 
 # make analyze FILE=input/book.pdf
 # make analyze FILE=input/book.pdf LLM=1
@@ -25,7 +33,7 @@ build: ## Build the Docker image
 # make analyze URL=https://example.com CRAWL=1 MAX_PAGES=100
 ##@ Analysis
 
-analyze: build ## Analyze FILE=... or URL=... (opt: LLM=1 PROVIDER= CRAWL=1 MAX_PAGES=)
+analyze: $(STAMP) ## Analyze FILE=... or URL=... (opt: LLM=1 PROVIDER= CRAWL=1 MAX_PAGES=)
 ifdef URL
 	$(RUN) \
 		-v $(CURDIR)/output:/output \
@@ -45,7 +53,7 @@ endif
 endif
 
 # Re-run the analysis for every examples/<name>/<text>.txt into examples/<name>/output/
-examples: build ## Re-run analysis for all examples/*/*.txt
+examples: $(STAMP) ## Re-run analysis for all examples/*/*.txt
 	for f in examples/*/*.txt; do \
 		d=$$(dirname $$f); mkdir -p $$d/output; \
 		$(RUN) -v $(CURDIR)/$$d:/input:ro -v $(CURDIR)/$$d/output:/output $(IMAGE) /input/$$(basename $$f) || exit 1; \
@@ -53,10 +61,15 @@ examples: build ## Re-run analysis for all examples/*/*.txt
 
 ##@ Development
 
-test: build ## Run unit tests in the container
-	$(RUN) -v $(CURDIR)/tests:/app/tests:ro --entrypoint python $(IMAGE) -m unittest discover -s /app/tests -v
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-shell: build ## Open a bash shell in the container
+test: ## Run tests with coverage (needs requirements-dev.txt installed; fails under 80%)
+	$(PYTHON) -m pytest
+
+binary: ## Build a native binary into dist/stylometry/ with PyInstaller
+	$(PYTHON) -m PyInstaller --noconfirm packaging/stylometry.spec
+
+shell: $(STAMP) ## Open a bash shell in the container
 	$(RUN) -it \
 		-v $(CURDIR)/input:/input \
 		-v $(CURDIR)/output:/output \
