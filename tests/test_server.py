@@ -223,7 +223,7 @@ def test_url_disabled(client, monkeypatch):
 def test_crawl_clamps_max_pages(client, monkeypatch):
     monkeypatch.setenv("MAX_PAGES_CAP", "2")
     seen = {}
-    from stylometry.server import app as mod
+    from stylometry.server import service as mod
     monkeypatch.setattr(mod, "load_text", lambda src, **kw: seen.update(kw) or TEXT)
     client.post("/analyze", json={"url": "http://x.test/", "crawl": True, "max_pages": 99})
     assert seen["max_pages"] == 2 and seen["crawl"] is True
@@ -235,7 +235,10 @@ def test_crawl_blocks_private_start(client, monkeypatch):
 
 
 def test_lambda_handler():
+    import asyncio
+
     from stylometry.server import lambda_handler
+    asyncio.set_event_loop(asyncio.new_event_loop())  # Mangum 0.17 uses get_event_loop(); earlier asyncio.run() unset it
 
     def event(method, path, body=None):
         return {"version": "2.0", "routeKey": "$default", "rawPath": path, "rawQueryString": "",
@@ -248,5 +251,10 @@ def test_lambda_handler():
     assert r["statusCode"] == 200 and json.loads(r["body"])["status"] == "ok"
     r = lambda_handler.handler(event("POST", "/analyze", json.dumps({"text": TEXT})), None)
     assert r["statusCode"] == 200 and json.loads(r["body"])["sentence_count"] == 2
+    mcp = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+    ev = event("POST", "/mcp", json.dumps(mcp))
+    ev["headers"]["accept"] = "application/json, text/event-stream"
+    r = lambda_handler.handler(ev, None)
+    assert r["statusCode"] == 200 and json.loads(r["body"])["result"]["tools"][0]["name"] == "analyze"
     r = lambda_handler.handler(event("POST", "/analyze", "{}"), None)
     assert r["statusCode"] == 422 and r["headers"]["content-type"] == "application/problem+json"

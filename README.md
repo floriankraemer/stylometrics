@@ -98,6 +98,7 @@ make binary
 `stylometry --serve --port 8080` starts an HTTP API: post JSON or a file, get the analysis back as JSON.
 Errors use RFC 9457 Problem Details.
 It also runs on AWS Lambda through `Dockerfile.lambda`.
+The same analysis is available as an MCP tool, over stdio (`stylometry --mcp`) or Streamable HTTP (`/mcp` on the server).
 See [docs/server.md](docs/server.md) for endpoints, configuration, and deployment.
 
 ## Supported input formats
@@ -144,7 +145,7 @@ See [docs/examples.md](docs/examples.md) for where the texts come from, the meas
 src/stylometry/
 ├── cli.py            entrypoint
 ├── pipeline.py        text -> profile, shared by CLI and server
-├── server/            FastAPI app, RFC 9457 problems, SSRF guard, Lambda handler
+├── server/            FastAPI app, MCP tool, RFC 9457 problems, SSRF guard, Lambda handler
 ├── ingest.py          PDF/DOCX/TXT/MD/EPUB/URL/site-crawl -> plain text
 ├── preprocess.py       single spaCy pass shared by all metrics
 ├── metrics/            lexical, function_words, syntax, punctuation, burstiness

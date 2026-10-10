@@ -15,6 +15,7 @@ def main(argv=None):
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("source", nargs="?", help="path to input file or a URL (not needed with --serve)")
     parser.add_argument("--serve", action="store_true", help="run the HTTP API server instead of analyzing a source")
+    parser.add_argument("--mcp", action="store_true", help="run an MCP server on stdin/stdout (tool: analyze)")
     parser.add_argument("--host", default="127.0.0.1", help="bind address for --serve (default 127.0.0.1)")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)),
                          help="port for --serve (default: $PORT or 8000)")
@@ -30,6 +31,11 @@ def main(argv=None):
                          help="directory for the generated files (default: $OUTPUT_DIR or ./output)")
     args = parser.parse_args(argv)
 
+    if args.mcp:
+        from stylometry.server.mcp_server import run_stdio
+
+        run_stdio()
+        return
     if args.serve:
         import uvicorn
 
@@ -38,7 +44,7 @@ def main(argv=None):
         uvicorn.run(app, host=args.host, port=args.port)
         return
     if not args.source:
-        parser.error("source is required unless --serve is given")
+        parser.error("source is required unless --serve or --mcp is given")
 
     print(f"[stylometry] loading: {args.source}" + (f" (crawling up to {args.max_pages} pages)" if args.crawl else ""), file=sys.stderr)
     text = load_text(args.source, crawl=args.crawl, max_pages=args.max_pages)

@@ -73,3 +73,11 @@ def test_serve_port_from_env(monkeypatch):
     monkeypatch.setattr(uvicorn, "run", lambda app, **kw: calls.append(kw))
     cli.main(["--serve"])
     assert calls == [{"host": "127.0.0.1", "port": 9001}]
+
+
+def test_mcp_flag_runs_stdio(monkeypatch):
+    from stylometry.server import mcp_server
+    calls = []
+    monkeypatch.setattr(mcp_server, "run_stdio", lambda: calls.append(1))
+    cli.main(["--mcp"])
+    assert calls == [1]

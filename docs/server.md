@@ -1,6 +1,6 @@
-# HTTP server mode
+# HTTP and MCP server mode
 
-The same analysis as the CLI, behind a JSON API.
+The same analysis as the CLI, behind a JSON API and as an MCP tool.
 It runs as a normal process on a VPS and as a container image on AWS Lambda.
 
 ## Run on a VPS
@@ -36,6 +36,44 @@ Limits to plan for:
   The default `MAX_BODY_BYTES` is 5 MiB.
 - Larger books or crawls need a Function URL with a longer timeout, or the CLI.
 - Cold start loads the spaCy model once per instance.
+
+## MCP server
+
+The server exposes one MCP tool, `analyze`, with the same inputs as `POST /analyze`: `text` or `url`, `name`, `crawl`, `max_pages`, `llm`, `provider`, `include`.
+It returns the profile as structured JSON.
+Failures come back as tool errors (`isError`) with the problem title and detail.
+Local file paths are not accepted, so use `text` or `url`, or the `/analyze/file` endpoint.
+
+### stdio (local clients)
+
+```sh
+stylometry --mcp
+```
+
+Claude Code:
+
+```sh
+claude mcp add stylometry -- /path/to/stylometry --mcp
+```
+
+Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{"mcpServers": {"stylometry": {"command": "/path/to/stylometry", "args": ["--mcp"]}}}
+```
+
+Provider keys for `llm` come from the environment of that process.
+
+### Streamable HTTP (remote clients)
+
+The HTTP server serves MCP at `/mcp`, in stateless JSON mode, so it works on a VPS and on Lambda alike.
+
+```sh
+claude mcp add --transport http stylometry https://example.com/mcp --header "Authorization: Bearer $KEY"
+```
+
+`/mcp` uses the same `STYLOMETRY_API_KEY` bearer check, body size limit, and URL guard as the REST endpoints.
+It does not check the `Host` header (the SDK's DNS-rebinding protection is off), so put the key on it whenever the server is reachable beyond localhost.
 
 ## Configuration
 

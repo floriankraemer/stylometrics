@@ -6,4 +6,4 @@ from stylometry.server.app import app
 
 get_nlp()  # load the spaCy model once per cold start, not on the first request
 
-handler = Mangum(app, lifespan="off")
+handler = Mangum(app, lifespan="auto")  # starts the MCP session manager

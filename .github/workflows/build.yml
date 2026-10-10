@@ -52,6 +52,8 @@ jobs:
           for i in $(seq 60); do curl -fs localhost:8765/healthz && break; sleep 1; done
           curl -fs localhost:8765/analyze -H 'content-type: application/json' -d '{"text":"I walked home. It was late."}' | grep -F '"sentence_count":2'
           curl -s localhost:8765/analyze -d '{}' -H 'content-type: application/json' | grep -F 'urn:stylometry:problem:validation-error'
+          curl -fs localhost:8765/mcp -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | grep -F '"analyze"'
           kill $pid
       - name: Archive
         run: |

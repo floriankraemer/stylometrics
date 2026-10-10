@@ -4,7 +4,7 @@ from PyInstaller.utils.hooks import collect_all
 datas, binaries, hiddenimports = [], [], []
 for pkg in ("spacy", "en_core_web_sm", "thinc", "srsly", "blis", "cymem", "preshed", "murmurhash",
             "ebooklib", "docx", "anthropic", "openai", "uvicorn", "fastapi", "starlette", "mangum",
-            "multipart", "pydantic", "anyio"):
+            "multipart", "pydantic", "anyio", "mcp", "pydantic_settings", "sse_starlette", "httpx_sse"):
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b
