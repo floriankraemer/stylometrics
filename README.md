@@ -33,7 +33,7 @@ Results land in `output/`.
 
 ## Download a prebuilt binary
 
-Every release on the [Releases page](https://github.com/floriankraemer/stylometrics/releases) ships native binaries for Linux (x86_64, arm64), macOS (x86_64, arm64), and Windows (x86_64).
+Every release on the [Releases page](https://github.com/floriankraemer/stylometrics/releases) ships native binaries for Linux (x86_64, arm64), macOS (arm64), and Windows (x86_64).
 No Python or Docker needed.
 
 - **`vX.Y.Z`** releases are stable, tagged versions.
