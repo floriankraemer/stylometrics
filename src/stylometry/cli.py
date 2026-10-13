@@ -15,7 +15,7 @@ def main(argv=None):
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("source", nargs="?", help="path to input file or a URL (not needed with --serve)")
     parser.add_argument("--serve", action="store_true", help="run the HTTP API server instead of analyzing a source")
-    parser.add_argument("--mcp", action="store_true", help="run an MCP server on stdin/stdout (tool: analyze)")
+    parser.add_argument("--mcp", action="store_true", help="run an MCP server on stdin/stdout (tools: analyze, analyze_file, compare; prompt: write_like)")
     parser.add_argument("--host", default="127.0.0.1", help="bind address for --serve (default 127.0.0.1)")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)),
                          help="port for --serve (default: $PORT or 8000)")

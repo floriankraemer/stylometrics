@@ -1,5 +1,6 @@
 """Request handling shared by the HTTP API and the MCP tool."""
 import os
+from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
@@ -94,3 +95,12 @@ def analyze_request(body: AnalyzeRequest, include: list[str]) -> dict:
                  max_pages=min(body.max_pages, int_env("MAX_PAGES_CAP", 50)))
     name = body.name or body.url.rstrip("/").split("/")[-1] or urlparse(body.url).hostname
     return _analyze(text, name, body.llm, body.provider, include)
+
+
+def analyze_path(path: str, name: str | None, llm: bool, provider: str, include: list[str]) -> dict:
+    """Analyze a file on the local filesystem. Only for trusted callers (stdio), never exposed over HTTP."""
+    _check_include(include)
+    _check_llm(llm, provider)
+    if not Path(path).is_file():
+        raise Problem(404, "file-not-found", "File Not Found", f"No such file: {path}")
+    return _analyze(_load(path), name or Path(path).name, llm, provider, include)

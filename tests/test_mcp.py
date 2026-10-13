@@ -33,16 +33,54 @@ def rpc(client, method, params=None, headers=None, id=1):
     return r
 
 
-def call(client, args, **kw):
-    r = rpc(client, "tools/call", {"name": "analyze", "arguments": args}, **kw)
+def call(client, args, name="analyze", **kw):
+    r = rpc(client, "tools/call", {"name": name, "arguments": args}, **kw)
     assert r.status_code == 200, r.text
     return r.json()["result"]
 
 
 def test_tools_list(client):
     tools = rpc(client, "tools/list").json()["result"]["tools"]
-    assert [t["name"] for t in tools] == ["analyze"]
+    assert [t["name"] for t in tools] == ["analyze", "compare"]
     assert {"text", "url", "llm", "include"} <= tools[0]["inputSchema"]["properties"].keys()
+    assert {"a", "b"} <= tools[1]["inputSchema"]["properties"].keys()
+    props = tools[0]["inputSchema"]["properties"]
+    assert props["max_pages"]["minimum"] == 1 and props["provider"]["enum"] == ["anthropic", "openai"]
+
+
+def test_compare(client):
+    result = call(client, {"a": {"text": TEXT, "name": "x"}, "b": {"text": "Short. Very short. Tiny."}}, "compare")
+    assert not result["isError"]
+    out = result["structuredContent"]
+    assert out["sources"] == ["x", "text"] and "lexical.ttr" in out["metrics"]
+    assert 0 <= out["function_word_similarity"] <= 1
+
+
+@pytest.mark.parametrize("args,msg", [({"a": {"text": TEXT}, "b": {}}, "exactly one"),
+                                      ({"a": {"text": TEXT}, "b": {"text": " "}}, "No Text")])
+def test_compare_errors(client, args, msg):
+    result = call(client, args, "compare")
+    assert result["isError"] and msg in result["content"][0]["text"]
+
+
+def test_write_like_prompt(client):
+    assert [p["name"] for p in rpc(client, "prompts/list").json()["result"]["prompts"]] == ["write_like"]
+    r = rpc(client, "prompts/get", {"name": "write_like", "arguments": {"source": TEXT, "task": "Write a poem."}})
+    msg = r.json()["result"]["messages"][0]
+    assert msg["role"] == "user"
+    assert msg["content"]["text"].startswith("# Style-Clone System Prompt")
+    assert msg["content"]["text"].endswith("Write a poem.")
+
+
+def test_write_like_default_task(client):
+    r = rpc(client, "prompts/get", {"name": "write_like", "arguments": {"source": TEXT}})
+    assert r.json()["result"]["messages"][0]["content"]["text"].endswith("Write a short passage in this style.")
+
+
+@pytest.mark.parametrize("source", ["http://127.0.0.1/", "HTTP://127.0.0.1/"])
+def test_write_like_url_blocked(client, source):
+    r = rpc(client, "prompts/get", {"name": "write_like", "arguments": {"source": source}})
+    assert "URL Not Allowed" in r.text
 
 
 def test_analyze_text(client):
@@ -81,15 +119,33 @@ def test_lifespan_restarts():
             assert rpc(c, "tools/list").status_code == 200
 
 
-def test_stdio_server():
+def stdio_session(fn):
     async def go():
         params = StdioServerParameters(command=sys.executable, args=["-m", "stylometry.cli", "--mcp"],
                                        env={"PYTHONPATH": SRC, "PATH": ""})
         async with stdio_client(params) as (r, w), ClientSession(r, w) as session:
             await session.initialize()
-            assert [t.name for t in (await session.list_tools()).tools] == ["analyze"]
-            res = await session.call_tool("analyze", {"text": TEXT})
-            return res
+            return await fn(session)
 
-    res = anyio.run(go)
+    return anyio.run(go)
+
+
+def test_stdio_server(tmp_path):
+    good = tmp_path / "a.txt"
+    good.write_text(TEXT)
+    odd = tmp_path / "a.xyz"
+    odd.write_text(TEXT)
+
+    async def run(session):
+        names = [t.name for t in (await session.list_tools()).tools]
+        return (names, await session.call_tool("analyze", {"text": TEXT}),
+                await session.call_tool("analyze_file", {"path": str(good)}),
+                await session.call_tool("analyze_file", {"path": str(tmp_path / "nope.txt")}),
+                await session.call_tool("analyze_file", {"path": str(odd)}))
+
+    names, res, file_res, missing, unsupported = stdio_session(run)
+    assert names == ["analyze", "compare", "analyze_file"]
     assert not res.isError and res.structuredContent["sentence_count"] == 2
+    assert not file_res.isError and file_res.structuredContent["source"] == "a.txt"
+    assert missing.isError and "File Not Found" in missing.content[0].text
+    assert unsupported.isError and "Unsupported Input Type" in unsupported.content[0].text

@@ -16,7 +16,7 @@ MAX_REDIRECTS = 5
 
 def load_text(source: str, crawl: bool = False, max_pages: int = 50, delay: float = 0.5, guard=None) -> str:
     """guard(url), if given, is called before every HTTP request (redirect hops included) and may raise to refuse it."""
-    if source.startswith("http://") or source.startswith("https://"):
+    if source.lower().startswith(("http://", "https://")):
         if crawl:
             return _crawl_site(source, max_pages=max_pages, delay=delay, guard=guard)
         return _from_url(source, guard)
@@ -54,7 +54,7 @@ def _from_epub(path: Path) -> str:
     import ebooklib
     from ebooklib import epub
 
-    book = epub.read_epub(str(path))
+    book = epub.read_epub(str(path), options={"ignore_ncx": True})
     chunks = []
     for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
         chunks.append(_from_html(item.get_content().decode("utf-8", errors="ignore")))
