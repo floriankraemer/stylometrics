@@ -1,12 +1,12 @@
 """MCP server exposing the analysis: stdio (`stylometry --mcp`) or Streamable HTTP at /mcp."""
-import os
-import sys
 from collections.abc import Callable
 from typing import Annotated, Any, Literal
 
 import anyio
-from mcp.server.fastmcp import FastMCP
-from mcp.server.transport_security import TransportSecuritySettings
+from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
+from mcp.shared.exceptions import MCPError
+from mcp_types import INTERNAL_ERROR, INVALID_PARAMS
 from pydantic import Field, ValidationError
 
 from stylometry import compare as compare_mod
@@ -23,25 +23,28 @@ Provider = Literal["anthropic", "openai"]
 
 
 async def _run(fn: Callable, *args) -> Any:
-    """Run a blocking service call in a worker thread, mapping failures to the ValueError MCP reports as isError."""
+    """Run a blocking service call in a worker thread, mapping failures to the ToolError MCP reports as isError."""
     try:
         return await anyio.to_thread.run_sync(fn, *args)
     except Problem as p:
-        raise ValueError(f"{p.title}: {p.detail}") from p
+        raise ToolError(f"{p.title}: {p.detail}") from p
 
 
 def _request(**kw) -> AnalyzeRequest:
     try:
         return AnalyzeRequest(**kw)
     except ValidationError as e:
-        raise ValueError("; ".join(err["msg"] for err in e.errors())) from e
+        raise ToolError("; ".join(err["msg"] for err in e.errors())) from e
 
 
-def build_mcp(local_files: bool = False) -> FastMCP:
-    # Host checking (DNS-rebinding protection) is for localhost-only servers; this one is meant to be reachable,
-    # and /mcp is protected by the same bearer API key as the rest of the HTTP API.
-    mcp = FastMCP("stylometry", instructions=INSTRUCTIONS, json_response=True, stateless_http=True,
-                  transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False))
+def _prompt_error(e: ToolError) -> MCPError:
+    """Prompts report expected failures as a protocol error (a bare exception would be logged as a crash)."""
+    server_fault = isinstance(e.__cause__, Problem) and e.__cause__.status >= 500
+    return MCPError(INTERNAL_ERROR if server_fault else INVALID_PARAMS, str(e))
+
+
+def build_mcp(local_files: bool = False) -> MCPServer:
+    mcp = MCPServer("stylometry", instructions=INSTRUCTIONS)
 
     @mcp.tool()
     async def analyze(text: str | None = None, url: str | None = None, name: str | None = None,
@@ -70,7 +73,10 @@ def build_mcp(local_files: bool = False) -> FastMCP:
     async def write_like(source: str, task: str = "") -> str:
         """Write in the style of a source: a http(s) URL or literal text. `task` says what to write."""
         key = "url" if source.lower().startswith(("http://", "https://")) else "text"
-        profile = await _run(service.analyze_request, _request(**{key: source}), [])
+        try:
+            profile = await _run(service.analyze_request, _request(**{key: source}), [])
+        except ToolError as e:
+            raise _prompt_error(e) from e
         return f"{clone_prompt.render(profile)}\n\n{task or DEFAULT_TASK}"
 
     if local_files:
@@ -84,11 +90,4 @@ def build_mcp(local_files: bool = False) -> FastMCP:
 
 
 def run_stdio() -> None:
-    # The SDK wraps sys.stdout.buffer and closes it on exit; hand it a duplicate so the real stdout stays usable
-    # (a PyInstaller binary flushes sys.stdout after main() returns).
-    real = sys.stdout
-    sys.stdout = open(os.dup(real.fileno()), "w")
-    try:
-        build_mcp(local_files=True).run(transport="stdio")
-    finally:
-        sys.stdout = real
+    build_mcp(local_files=True).run(transport="stdio")

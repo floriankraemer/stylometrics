@@ -111,7 +111,15 @@ Write a poem.
 ```
 
 URL sources go through the same checks as the `url` argument of `analyze`.
-If the analysis fails, the client gets a JSON-RPC error such as `Error rendering prompt write_like: URL Not Allowed: ...`.
+If the analysis fails, the client gets a JSON-RPC error instead of a result.
+The code is `-32602` (invalid params) when the source is at fault and `-32603` (internal error) when the cause is a server-side failure with a 5xx status, such as a failed fetch.
+The message is the problem title and detail, or the validation message for a bad source, for example:
+
+```json
+{"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "URL Not Allowed: host '127.0.0.1' resolves to a non-public address"}}
+```
+
+A missing `source` is rejected by the SDK before the server runs, with code `0` and the message `Missing required arguments: {'source'}`.
 
 ## Errors
 
@@ -119,10 +127,20 @@ Tool errors carry the problem title and detail from the [HTTP error table](serve
 
 ```text
 Error executing tool compare: No Text: No text could be extracted from the input.
+Error executing tool analyze: URL Not Allowed: host '127.0.0.1' resolves to a non-public address
 Error executing tool analyze: Value error, provide exactly one of 'text' or 'url'
 ```
 
-Argument validation errors (missing source, bad `provider`, `max_pages` below 1) list the validation messages instead.
+Arguments that do not match the tool's schema (a missing `b` for `compare`, a bad `provider`, `max_pages` below 1) fail in the SDK before the tool runs.
+Their text is the pydantic validation report after the same prefix:
+
+```text
+Error executing tool analyze: 1 validation error for analyzeArguments
+max_pages
+  Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]
+    For further information visit https://errors.pydantic.dev/...
+```
+
 `analyze_file` adds `File Not Found: No such file: <path>` for a missing file.
 
 ## stdio
@@ -230,8 +248,10 @@ Either add the server as a custom connector in the app's settings, or bridge to 
 ### Raw requests
 
 Any HTTP client can call `/mcp` directly.
-Send `Accept: application/json, text/event-stream`, even though responses are always JSON.
-Without both types the SDK answers `406` with a JSON-RPC error (not Problem Details).
+Only `POST` is supported.
+The `Accept` header must allow `application/json`; `application/*` and `*/*` also pass.
+Sending `Accept: application/json, text/event-stream` is still a good idea, because the MCP spec asks clients to list both, but responses are always JSON.
+The body must be sent as `Content-Type: application/json`.
 No `initialize` call is needed first, because the endpoint is stateless.
 
 ```sh
@@ -245,9 +265,28 @@ The response, shortened:
 
 ```text
 {"jsonrpc": "2.0", "id": 1, "result": {
-  "content": [{"type": "text", "text": "{\"source\": \"text\", \"sentence_count\": 2, ...}"}],
-  "structuredContent": {"source": "text", "sentence_count": 2, "quantitative": {...}, "qualitative": {...}},
-  "isError": false}}
+  "content": [{"text": "{\n  \"source\": \"text\",\n  \"sentence_count\": 2, ...}", "type": "text"}],
+  "isError": false,
+  "structuredContent": {"source": "text", "sentence_count": 2, "quantitative": {...}, "qualitative": {...}}}}
 ```
 
 `tools/list`, `prompts/list` and `prompts/get` work the same way.
+
+Before the request reaches the MCP SDK, `/mcp` checks it in this order and answers with [Problem Details](server.md#errors) on failure:
+
+| Check | Status | `type` slug |
+|---|---|---|
+| Bearer token, if `STYLOMETRY_API_KEY` is set | 401 | `unauthorized` |
+| Method is `POST` (the response carries `Allow: POST`) | 405 | `method-not-allowed` |
+| `Accept` allows `application/json` | 406 | `not-acceptable` |
+| `Content-Type` is `application/json` | 415 | `unsupported-media-type` |
+
+A `GET` does not open a server-sent event stream; it gets the `405` like any other method except `POST`.
+A `POST` that accepts only `text/event-stream` gets this response:
+
+```text
+HTTP/1.1 406 Not Acceptable
+content-type: application/problem+json
+
+{"type":"urn:stylometry:problem:not-acceptable","title":"Not Acceptable","status":406,"detail":"The client must accept application/json.","instance":"/mcp"}
+```

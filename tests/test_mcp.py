@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -80,9 +81,10 @@ def test_write_like_default_task(client):
 
 
 @pytest.mark.parametrize("source", ["http://127.0.0.1/", "HTTP://127.0.0.1/"])
-def test_write_like_url_blocked(client, source):
+def test_write_like_url_blocked(client, source, caplog):
     r = rpc(client, "prompts/get", {"name": "write_like", "arguments": {"source": source}})
-    assert "URL Not Allowed" in r.text
+    assert r.json()["error"]["code"] == -32602 and "URL Not Allowed" in r.json()["error"]["message"]
+    assert not [x for x in caplog.records if x.levelno >= logging.ERROR]
 
 
 def test_analyze_text(client):
@@ -101,9 +103,10 @@ def test_include(client):
                                       ({"text": TEXT, "llm": True}, "LLM Not Configured"),
                                       ({"url": "http://127.0.0.1/"}, "URL Not Allowed"),
                                       ({"text": TEXT, "include": ["x"]}, "Invalid request")])
-def test_tool_errors(client, args, msg):
+def test_tool_errors(client, args, msg, caplog):
     result = call(client, args)
     assert result["isError"] and msg in result["content"][0]["text"]
+    assert not [x for x in caplog.records if x.levelno >= logging.ERROR]
 
 
 def test_auth(client, monkeypatch):
@@ -112,6 +115,42 @@ def test_auth(client, monkeypatch):
     assert r.status_code == 401 and r.headers["content-type"] == "application/problem+json"
     assert r.headers["www-authenticate"] == "Bearer"
     assert rpc(client, "tools/list", headers={"authorization": "Bearer s3cret"}).status_code == 200
+
+
+def assert_problem(r, status, slug):
+    assert r.status_code == status and r.headers["content-type"] == "application/problem+json"
+    assert r.json()["type"] == f"urn:stylometry:problem:{slug}" and r.json()["instance"] == "/mcp"
+
+
+@pytest.mark.parametrize("method", ["GET", "DELETE", "PUT"])
+def test_mcp_rejects_non_post(client, method):
+    # GET used to open an SSE stream that never sends, hanging the client
+    r = client.request(method, "/mcp", headers={"accept": "text/event-stream"})
+    assert_problem(r, 405, "method-not-allowed") and r.headers["allow"] == "POST"
+
+
+@pytest.mark.parametrize("accept", [None, "text/event-stream", "text/html"])
+def test_mcp_not_acceptable(client, accept):
+    r = rpc(client, "tools/list", headers={"accept": accept} if accept else {"accept": ""})
+    assert_problem(r, 406, "not-acceptable")
+
+
+@pytest.mark.parametrize("content_type", ["text/plain", ""])
+def test_mcp_unsupported_media_type(client, content_type):
+    r = rpc(client, "tools/list", headers={"content-type": content_type})
+    assert_problem(r, 415, "unsupported-media-type")
+
+
+def test_mcp_accepts_what_the_sdk_accepts(client):
+    assert rpc(client, "tools/list", headers={"accept": "application/*"}).status_code == 200
+    assert rpc(client, "tools/list", headers={"content-type": "application/json; charset=utf-8"}).status_code == 200
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_mcp_auth_comes_first(client, monkeypatch, method):
+    monkeypatch.setenv("STYLOMETRY_API_KEY", "s3cret")
+    r = client.request(method, "/mcp", headers={"accept": "text/html", "content-type": "text/plain"})
+    assert_problem(r, 401, "unauthorized")
 
 
 def test_lifespan_restarts():
@@ -147,10 +186,10 @@ def test_stdio_server(tmp_path):
 
     names, res, file_res, missing, unsupported = stdio_session(run)
     assert names == ["analyze", "compare", "analyze_file"]
-    assert not res.isError and res.structuredContent["sentence_count"] == 2
-    assert not file_res.isError and file_res.structuredContent["source"] == "a.txt"
-    assert missing.isError and "File Not Found" in missing.content[0].text
-    assert unsupported.isError and "Unsupported Input Type" in unsupported.content[0].text
+    assert not res.is_error and res.structured_content["sentence_count"] == 2
+    assert not file_res.is_error and file_res.structured_content["source"] == "a.txt"
+    assert missing.is_error and "File Not Found" in missing.content[0].text
+    assert unsupported.is_error and "Unsupported Input Type" in unsupported.content[0].text
 
 
 def test_stdio_leaves_stdout_open():
@@ -159,3 +198,4 @@ def test_stdio_leaves_stdout_open():
     r = subprocess.run([sys.executable, "-c", code], input=b"", capture_output=True,
                        env={**os.environ, "PYTHONPATH": SRC})
     assert r.returncode == 0, r.stderr.decode()
+    assert b"Traceback" not in r.stderr

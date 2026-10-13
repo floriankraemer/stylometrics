@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Form, Query, Request, UploadFile
+from mcp.server.streamable_http import check_accept_headers
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.routing import Route
 
 from stylometry import __version__
@@ -71,6 +73,19 @@ def require_api_key(request: Request) -> None:
                       headers={"WWW-Authenticate": "Bearer"})
 
 
+def require_mcp_post(request: Request) -> None:
+    """The SDK answers non-POST with an SSE stream that never sends (GET) or JSON-RPC errors; mirror its POST rules."""
+    if request.method != "POST":
+        raise Problem(405, "method-not-allowed", "Method Not Allowed", "Only POST is supported on /mcp.",
+                      headers={"Allow": "POST"})
+    if not check_accept_headers(request)[0]:  # json_response mode: application/json is enough
+        raise Problem(406, "not-acceptable", "Not Acceptable", "The client must accept application/json.")
+    media_types = request.headers.get("content-type", "").split(";")[0].split(",")
+    if "application/json" not in (m.strip() for m in media_types):
+        raise Problem(415, "unsupported-media-type", "Unsupported Media Type",
+                      "Content-Type must be application/json.")
+
+
 class McpEndpoint:
     """ASGI endpoint for /mcp: API-key check, then the MCP Streamable HTTP app that the lifespan currently runs."""
 
@@ -80,6 +95,7 @@ class McpEndpoint:
         request = Request(scope)
         try:
             require_api_key(request)
+            require_mcp_post(request)
         except Problem as p:
             resp = problems.response(request, p.status, p.slug, p.title, p.detail, p.headers)
             return await resp(scope, receive, send)
@@ -93,7 +109,11 @@ def create_app() -> FastAPI:
     async def lifespan(_app):
         # Built per startup: a session manager can only run once, and Mangum runs the lifespan per Lambda invocation.
         mcp = build_mcp()
-        mcp_app = mcp.streamable_http_app()
+        # Host checking (DNS-rebinding protection) is for localhost-only servers; this one is meant to be reachable,
+        # and /mcp is protected by the same bearer API key as the rest of the HTTP API.
+        mcp_app = mcp.streamable_http_app(json_response=True, stateless_http=True,
+                                          transport_security=TransportSecuritySettings(
+                                              enable_dns_rebinding_protection=False))
         async with mcp.session_manager.run():
             mcp_endpoint.app = mcp_app
             yield

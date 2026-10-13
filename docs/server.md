@@ -247,9 +247,11 @@ Request validation failures add an `errors` member with one entry per problem:
 | 401 | `unauthorized` | Unauthorized | Missing or wrong bearer token. |
 | 403 | `url-not-allowed` | URL Not Allowed | `url` sent while `ALLOW_URL=0`. |
 | 404 | `not-found` | Not Found | Unknown route. |
-| 405 | `method-not-allowed` | Method Not Allowed | Wrong method for the route. |
+| 405 | `method-not-allowed` | Method Not Allowed | Wrong method for the route, including any method other than `POST` on `/mcp` (with `Allow: POST`). |
+| 406 | `not-acceptable` | Not Acceptable | `/mcp` only: the `Accept` header does not allow `application/json`. |
 | 413 | `payload-too-large` | Payload Too Large | Body over `MAX_BODY_BYTES`, by `Content-Length` or by bytes received. |
 | 415 | `unsupported-media-type` | Unsupported Input Type | Uploaded file has an unsupported suffix. |
+| 415 | `unsupported-media-type` | Unsupported Media Type | `/mcp` only: `Content-Type` is not `application/json`. |
 | 422 | `validation-error` | Invalid request | Bad JSON, missing or invalid fields (with `errors`), or an unknown `include` value (without `errors`). |
 | 422 | `empty-text` | No Text | No text extracted. |
 | 422 | `unreadable-input` | Unreadable Input | The file could not be parsed, for example a corrupt PDF. |
