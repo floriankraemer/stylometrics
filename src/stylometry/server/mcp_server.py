@@ -1,4 +1,6 @@
 """MCP server exposing the analysis: stdio (`stylometry --mcp`) or Streamable HTTP at /mcp."""
+import os
+import sys
 from collections.abc import Callable
 from typing import Annotated, Any, Literal
 
@@ -82,4 +84,11 @@ def build_mcp(local_files: bool = False) -> FastMCP:
 
 
 def run_stdio() -> None:
-    build_mcp(local_files=True).run(transport="stdio")
+    # The SDK wraps sys.stdout.buffer and closes it on exit; hand it a duplicate so the real stdout stays usable
+    # (a PyInstaller binary flushes sys.stdout after main() returns).
+    real = sys.stdout
+    sys.stdout = open(os.dup(real.fileno()), "w")
+    try:
+        build_mcp(local_files=True).run(transport="stdio")
+    finally:
+        sys.stdout = real

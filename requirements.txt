@@ -9,8 +9,8 @@ jinja2==3.1.4
 anthropic==0.34.2
 openai==1.42.0
 fastapi==0.115.0
-uvicorn==0.30.6
+uvicorn==0.54.0
 mangum==0.17.0
 python-multipart==0.0.9
-mcp==1.12.4
-pydantic==2.10.6
+mcp==1.30.0
+pydantic==2.14.1

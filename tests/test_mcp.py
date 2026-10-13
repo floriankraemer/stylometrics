@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -149,3 +150,11 @@ def test_stdio_server(tmp_path):
     assert not file_res.isError and file_res.structuredContent["source"] == "a.txt"
     assert missing.isError and "File Not Found" in missing.content[0].text
     assert unsupported.isError and "Unsupported Input Type" in unsupported.content[0].text
+
+
+def test_stdio_leaves_stdout_open():
+    # the SDK's stdio transport closes the stdout it wraps; a PyInstaller binary flushes sys.stdout after main()
+    code = "import sys; from stylometry.server.mcp_server import run_stdio; run_stdio(); sys.stdout.flush()"
+    r = subprocess.run([sys.executable, "-c", code], input=b"", capture_output=True,
+                       env={"PYTHONPATH": SRC, "PATH": ""})
+    assert r.returncode == 0, r.stderr.decode()
