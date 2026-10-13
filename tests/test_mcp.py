@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -123,7 +124,7 @@ def test_lifespan_restarts():
 def stdio_session(fn):
     async def go():
         params = StdioServerParameters(command=sys.executable, args=["-m", "stylometry.cli", "--mcp"],
-                                       env={"PYTHONPATH": SRC, "PATH": ""})
+                                       env={**os.environ, "PYTHONPATH": SRC})
         async with stdio_client(params) as (r, w), ClientSession(r, w) as session:
             await session.initialize()
             return await fn(session)
@@ -156,5 +157,5 @@ def test_stdio_leaves_stdout_open():
     # the SDK's stdio transport closes the stdout it wraps; a PyInstaller binary flushes sys.stdout after main()
     code = "import sys; from stylometry.server.mcp_server import run_stdio; run_stdio(); sys.stdout.flush()"
     r = subprocess.run([sys.executable, "-c", code], input=b"", capture_output=True,
-                       env={"PYTHONPATH": SRC, "PATH": ""})
+                       env={**os.environ, "PYTHONPATH": SRC})
     assert r.returncode == 0, r.stderr.decode()
