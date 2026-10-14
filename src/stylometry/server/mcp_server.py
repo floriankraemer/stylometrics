@@ -1,4 +1,8 @@
 """MCP server exposing the analysis: stdio (`stylometry --mcp`) or Streamable HTTP at /mcp."""
+import logging
+import os
+import signal
+import sys
 from collections.abc import Callable
 from typing import Annotated, Any, Literal
 
@@ -9,6 +13,7 @@ from mcp.shared.exceptions import MCPError
 from mcp_types import INTERNAL_ERROR, INVALID_PARAMS
 from pydantic import Field, ValidationError
 
+from stylometry import __version__
 from stylometry import compare as compare_mod
 from stylometry.report import clone_prompt
 from stylometry.server import service
@@ -20,6 +25,7 @@ INSTRUCTIONS = ("Stylometric analysis of writing: lexical diversity, function wo
                 "Use compare to contrast two sources, and the write_like prompt to write in a source's style.")
 DEFAULT_TASK = "Write a short passage in this style."
 Provider = Literal["anthropic", "openai"]
+log = logging.getLogger("stylometry")
 
 
 async def _run(fn: Callable, *args) -> Any:
@@ -90,4 +96,20 @@ def build_mcp(local_files: bool = False) -> MCPServer:
 
 
 def run_stdio() -> None:
-    build_mcp(local_files=True).run(transport="stdio")
+    mcp = build_mcp(local_files=True)
+    tools = ", ".join(t.name for t in anyio.run(mcp.list_tools))
+    prompts = ", ".join(p.name for p in anyio.run(mcp.list_prompts))
+    log.info("stylometry %s MCP server on stdio. Tools: %s. Prompts: %s.", __version__, tools, prompts)
+    if sys.stdin.isatty():
+        log.info("Waiting for an MCP client on stdin. Clients normally start this themselves, "
+                 "e.g. `claude mcp add stylometry -- stylometry --mcp`. Press Ctrl+C to stop.")
+    signal.signal(signal.SIGINT, _stop)  # asyncio keeps a non-default SIGINT handler in place
+    mcp.run(transport="stdio")
+
+
+def _stop(*_) -> None:
+    # The SDK reads stdin in a worker thread blocked in read(): asyncio's own Ctrl+C handling cancels the server, then
+    # waits for that thread forever. Exit at once instead; nothing is left to flush, requests are answered as they come.
+    log.info("Stopped.")
+    logging.shutdown()
+    os._exit(130)

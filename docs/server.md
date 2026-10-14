@@ -21,6 +21,9 @@ stylometry --serve --host 0.0.0.0 --port 8080
 The default host only accepts local connections.
 Put a reverse proxy with TLS in front, or pass `0.0.0.0` deliberately.
 
+On start the server logs its version and endpoints, whether a bearer token is required, and which LLM providers have a key.
+Binding to a non-loopback address without `STYLOMETRY_API_KEY` logs a warning, because anyone who can reach the port can then use the API.
+
 From a source checkout, `make serve` does the same with the virtualenv (`HOST` and `PORT` override the defaults):
 
 ```sh

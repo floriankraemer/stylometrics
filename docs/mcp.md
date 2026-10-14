@@ -154,6 +154,11 @@ Provider keys for `llm` come from the environment of that process.
 `STYLOMETRY_API_KEY` does not apply, because only the launching client can talk to it.
 `ALLOW_URL` and `MAX_PAGES_CAP` do apply.
 
+On start it logs one line to stderr with the version, tools, and prompts.
+Started by hand in a terminal, it also explains that MCP clients normally launch it themselves.
+Ctrl+C stops it at once with exit code 130.
+The process also exits when the client closes stdin.
+
 ### Claude Code
 
 ```sh

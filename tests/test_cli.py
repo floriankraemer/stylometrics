@@ -52,10 +52,56 @@ def test_output_env_default(tmp_path, monkeypatch):
     assert (tmp_path / "envout" / "essay_profile.md").exists()
 
 
-def test_source_required_without_serve():
+def test_no_arguments_prints_help(capsys):
     with pytest.raises(SystemExit) as e:
         cli.main([])
     assert e.value.code == 2
+    err = capsys.readouterr().err
+    assert "stylometry --serve" in err and "analyze a source" in err and "examples:" in err
+
+
+def test_source_required_without_serve():
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--llm"])
+    assert e.value.code == 2
+
+
+@pytest.mark.parametrize("env,host,level,msg", [
+    ({"STYLOMETRY_API_KEY": "k"}, "0.0.0.0", "INFO", "Auth: bearer token required"),
+    ({}, "127.0.0.1", "INFO", "Auth: off (set STYLOMETRY_API_KEY"),
+    ({}, "localhost", "INFO", "Auth: off (set STYLOMETRY_API_KEY"),
+    ({}, "0.0.0.0", "WARNING", "Auth: off on 0.0.0.0"),
+])
+def test_serve_banner_auth(monkeypatch, caplog, env, host, level, msg):
+    import uvicorn
+    for k in ("STYLOMETRY_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: None)
+    with caplog.at_level("INFO", logger="stylometry"):
+        cli.main(["--serve", "--host", host])
+    assert any(r.levelname == level and msg in r.getMessage() for r in caplog.records)
+    assert "MCP at /mcp" in caplog.text and "LLM pass: unavailable" in caplog.text
+
+
+def test_serve_banner_llm_providers(monkeypatch, caplog):
+    import uvicorn
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: None)
+    with caplog.at_level("INFO", logger="stylometry"):
+        cli.main(["--serve"])
+    assert "LLM pass: openai" in caplog.text
+
+
+def test_keyboard_interrupt_exits_130(monkeypatch, caplog):
+    def interrupted(*a, **kw):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(cli, "load_text", interrupted)
+    with pytest.raises(SystemExit) as e:
+        cli.main(["some.txt"])
+    assert e.value.code == 130 and "Interrupted." in caplog.text
 
 
 def test_serve_passes_host_and_port(monkeypatch):

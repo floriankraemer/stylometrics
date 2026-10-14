@@ -1,10 +1,11 @@
 """Single spaCy pass shared by all downstream metrics."""
+import logging
 import re
-import sys
 from dataclasses import dataclass, field
 
 import spacy
 
+log = logging.getLogger("stylometry")
 _nlp = None
 _CHUNK_RE = re.compile(r"\n\s*\n")
 
@@ -48,8 +49,7 @@ def analyze(text: str) -> Analysis:
     docs = []
     for i, doc in enumerate(nlp.pipe(chunks), start=1):
         docs.append(doc)
-        print(f"[stylometry] spaCy: {i}/{len(chunks)} chunks ({100 * i // len(chunks)}%)",
-              file=sys.stderr)
+        log.info("spaCy: %d/%d chunks (%d%%)", i, len(chunks), 100 * i // len(chunks))
     doc = spacy.tokens.Doc.from_docs(docs)
 
     sentences = list(doc.sents)

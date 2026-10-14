@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -199,3 +200,22 @@ def test_stdio_leaves_stdout_open():
                        env={**os.environ, "PYTHONPATH": SRC})
     assert r.returncode == 0, r.stderr.decode()
     assert b"Traceback" not in r.stderr
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGINT cannot be sent to a child process on Windows")
+def test_stdio_ctrl_c_exits_at_once():
+    # stdin stays open, as in a terminal: the SDK's reader thread is blocked in read() when Ctrl+C arrives
+    p = subprocess.Popen([sys.executable, "-m", "stylometry.cli", "--mcp"], stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, env={**os.environ, "PYTHONPATH": SRC})
+    try:
+        banner = p.stderr.readline().decode()
+        p.send_signal(signal.SIGINT)
+        assert p.wait(timeout=10) == 130
+    finally:
+        p.kill()
+        p.stdin.close()
+    err = p.stderr.read().decode()
+    p.stderr.close()
+    p.stdout.close()
+    assert "MCP server on stdio. Tools: analyze, compare, analyze_file. Prompts: write_like." in banner
+    assert "Stopped." in err and "Traceback" not in err
