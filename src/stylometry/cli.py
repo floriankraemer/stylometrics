@@ -12,7 +12,7 @@ from stylometry.report import clone_prompt, html_report, profile_md
 
 log = logging.getLogger("stylometry")
 
-USAGE = """stylometry SOURCE [--output DIR] [--llm [--provider NAME]] [--crawl [--max-pages N]]
+USAGE = """stylometry SOURCE [--output DIR] [--lang LANG] [--llm [--provider NAME]] [--crawl [--max-pages N]]
        stylometry --serve [--host HOST] [--port PORT]
        stylometry --mcp"""
 EPILOG = """examples:
@@ -36,6 +36,8 @@ def _parser() -> argparse.ArgumentParser:
                          help="add an LLM-assisted qualitative pass (needs a provider API key)")
     analyze.add_argument("--provider", default=os.environ.get("LLM_PROVIDER", "anthropic"),
                          choices=["anthropic", "openai"], help="LLM provider for --llm (default: anthropic)")
+    analyze.add_argument("--lang", default="auto", choices=["auto", "en", "de"],
+                         help="text language (default: auto, detects English or German)")
     analyze.add_argument("--crawl", action="store_true", default=os.environ.get("CRAWL") == "1",
                          help="crawl the whole site (same domain) starting from a URL source")
     analyze.add_argument("--max-pages", type=int, metavar="N", default=int(os.environ.get("MAX_PAGES", 50)),
@@ -125,7 +127,7 @@ def _main(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     source_name = args.source.rstrip("/").split("/")[-1]
     if args.llm:
         log.info("Running LLM-assisted qualitative pass (%s)", args.provider)
-    profile = pipeline.run(text, source_name, llm=args.llm, provider=args.provider)
+    profile = pipeline.run(text, source_name, llm=args.llm, provider=args.provider, lang=args.lang)
 
     args.output.mkdir(parents=True, exist_ok=True)
     base = Path(source_name).stem or "output"

@@ -11,6 +11,7 @@ Needs Python 3.12.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m spacy download en_core_web_sm
+.venv/bin/python -m spacy download de_core_news_sm
 ```
 
 Run from the repo root.

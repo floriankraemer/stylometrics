@@ -24,5 +24,6 @@ jobs:
             requirements-dev.txt
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python -m spacy download en_core_web_sm
+      - run: python -m spacy download de_core_news_sm
       # pyproject.toml enforces fail_under = 80
       - run: python -m pytest

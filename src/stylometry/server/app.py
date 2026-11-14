@@ -136,6 +136,7 @@ def create_app() -> FastAPI:
     def analyze_file(file: UploadFile, name: Annotated[str | None, Form()] = None,
                      llm: Annotated[bool, Form()] = False,
                      provider: Annotated[str, Form(pattern="^(anthropic|openai)$")] = "anthropic",
+                     lang: Annotated[str, Form(pattern="^(auto|en|de)$")] = "auto",
                      include: Include = []):
         _check_include(include)
         _check_llm(llm, provider)
@@ -145,7 +146,7 @@ def create_app() -> FastAPI:
             path = Path(d) / f"upload{Path(filename).suffix.lower()}"
             path.write_bytes(file.file.read())
             text = _load(str(path))
-        return _analyze(text, name or filename, llm, provider, include)
+        return _analyze(text, name or filename, llm, provider, include, lang)
 
     return app
 

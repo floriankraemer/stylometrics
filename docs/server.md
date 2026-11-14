@@ -132,6 +132,7 @@ Send exactly one of `text` or `url`.
 | `name` | see below | Source name used in the output. |
 | `llm` | `false` | Add the LLM-assisted qualitative pass. |
 | `provider` | `anthropic` | `anthropic` or `openai`. |
+| `lang` | `auto` | Text language: `auto` (detects English or German), `en` or `de`. |
 
 Without `name`, the source is called `text` for text input.
 For a URL it is the last path segment, or the host name if the path is empty.
@@ -155,6 +156,7 @@ curl -s localhost:8080/analyze/file -F file=@book.pdf -F name=book
 | `name` | the uploaded file name | Source name used in the output. |
 | `llm` | `false` | Add the LLM-assisted qualitative pass. |
 | `provider` | `anthropic` | `anthropic` or `openai`. |
+| `lang` | `auto` | Text language: `auto` (detects English or German), `en` or `de`. |
 
 ### Rendered Markdown (`include`)
 
@@ -210,6 +212,7 @@ This is the real output for the `/analyze` example above, with the `function_wor
 }
 ```
 
+The response has a `language` field with the language used (`en` or `de`).
 With `"llm": true`, `qualitative` also has an `llm` object with the provider's answer.
 With `include`, the response has a `rendered` object keyed by the requested values.
 

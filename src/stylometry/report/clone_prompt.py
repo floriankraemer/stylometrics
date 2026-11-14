@@ -1,3 +1,6 @@
+from stylometry.language import LANGUAGES
+
+
 def render(profile: dict) -> str:
     q = profile["quantitative"]
     h = profile["qualitative"]["heuristics"]
@@ -10,6 +13,7 @@ def render(profile: dict) -> str:
         "",
         "You are a writer who replicates the measured style below with precision. "
         "Do not describe the style — write in it.",
+        *([f"Write in {LANGUAGES[profile['language']]['name']}."] if profile["language"] != "en" else []),
         "",
         "## Sentence Mechanics",
         f"- Average sentence length: {q['burstiness']['mean_sentence_length']} words "
