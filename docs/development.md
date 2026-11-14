@@ -60,6 +60,9 @@ To cut a release, push a strict semver tag:
 git tag v1.2.3 && git push origin v1.2.3
 ```
 
+The workflow creates the release as a draft with generated notes.
+It goes public once someone edits the notes and publishes it on the Releases page.
+
 Tags with a suffix such as `v1.2.3-rc.1` are published as prereleases.
 A tag that is not `vMAJOR.MINOR.PATCH[-pre]` fails the release workflow.
 
