@@ -100,6 +100,9 @@ def build_mcp(local_files: bool = False) -> MCPServer:
 
 
 def run_stdio() -> None:
+    # installed before the banner: a client that reacts to the banner may interrupt right away.
+    # asyncio keeps a non-default SIGINT handler in place
+    signal.signal(signal.SIGINT, _stop)
     mcp = build_mcp(local_files=True)
     tools = ", ".join(t.name for t in anyio.run(mcp.list_tools))
     prompts = ", ".join(p.name for p in anyio.run(mcp.list_prompts))
@@ -107,7 +110,6 @@ def run_stdio() -> None:
     if sys.stdin.isatty():
         log.info("Waiting for an MCP client on stdin. Clients normally start this themselves, "
                  "e.g. `claude mcp add stylometry -- stylometry --mcp`. Press Ctrl+C to stop.")
-    signal.signal(signal.SIGINT, _stop)  # asyncio keeps a non-default SIGINT handler in place
     mcp.run(transport="stdio")
 
 
