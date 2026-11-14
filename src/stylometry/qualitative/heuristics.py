@@ -22,7 +22,7 @@ def _narration_words(doc, lang) -> list:
     """Lowercased words outside quotation marks, so characters' dialogue doesn't set the voice."""
     open_quotes, close_quotes = LANGUAGES[lang]["open_quotes"], LANGUAGES[lang]["close_quotes"]
     in_quote, out = False, []
-    for t in doc:
+    for i, t in enumerate(doc):
         if t.is_space and t.text.count("\n") >= 2:
             in_quote = False  # multi-paragraph quotes leave the closing mark off each paragraph
         elif t.text in open_quotes:
@@ -31,6 +31,14 @@ def _narration_words(doc, lang) -> list:
             in_quote = False
         elif t.text == '"':
             in_quote = not in_quote
+        elif t.text == "'":
+            # single-quote dialogue: a lone ' after a space opens, one glued to the previous word
+            # closes; plural possessives ("kings' ") outside a quote are ignored
+            after_space = i == 0 or bool(doc[i - 1].whitespace_) or doc[i - 1].is_space
+            if after_space:
+                in_quote = True
+            elif in_quote:
+                in_quote = False
         elif t.is_alpha and not in_quote:
             out.append(t.text.lower())
     return out
