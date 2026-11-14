@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Style Report — buddenbrooks.txt</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { border-bottom: 2px solid #222; padding-bottom: .3rem; }
+  h2 { margin-top: 2.5rem; border-bottom: 1px solid #ccc; padding-bottom: .2rem; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
+  th, td { text-align: left; padding: .3rem .6rem; border-bottom: 1px solid #eee; }
+  th { background: #f5f5f0; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem 1.5rem; }
+  .metric { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; border-bottom: 1px dotted #ddd; padding: .2rem 0; }
+  .metric .label { color: #555; min-width: 0; overflow-wrap: break-word; }
+  .metric .value { font-weight: bold; flex-shrink: 0; }
+  p.note { color: #666; font-size: .9rem; }
+</style>
+</head>
+<body>
+<h1>Style Report</h1>
+<p class="note">Source: buddenbrooks.txt — 11923 sentences, 227451 tokens.</p>
+
+<h2>1. Mechanics &amp; Lexical Diversity</h2>
+<div class="metric-grid">
+
+  <div class="metric"><span class="label">token_count</span><span class="value">227451</span></div>
+
+  <div class="metric"><span class="label">type_count</span><span class="value">24698</span></div>
+
+  <div class="metric"><span class="label">ttr</span><span class="value">0.1086</span></div>
+
+  <div class="metric"><span class="label">yules_k</span><span class="value">56.97</span></div>
+
+  <div class="metric"><span class="label">honores_r</span><span class="value">2698.81</span></div>
+
+</div>
+
+<h2>2. Vocabulary — Top Function Words (per 1000 tokens)</h2>
+<table>
+<tr><th>Word</th><th>Per 1000 tokens</th></tr>
+
+<tr><td>und</td><td>42.13</td></tr>
+
+<tr><td>die</td><td>25.13</td></tr>
+
+<tr><td>der</td><td>21.57</td></tr>
+
+<tr><td>er</td><td>16.36</td></tr>
+
+<tr><td>in</td><td>14.84</td></tr>
+
+<tr><td>mit</td><td>14.23</td></tr>
+
+<tr><td>zu</td><td>14.13</td></tr>
+
+<tr><td>sie</td><td>13.97</td></tr>
+
+<tr><td>das</td><td>11.4</td></tr>
+
+<tr><td>sich</td><td>11.39</td></tr>
+
+<tr><td>den</td><td>10.61</td></tr>
+
+<tr><td>es</td><td>9.78</td></tr>
+
+<tr><td>ich</td><td>9.7</td></tr>
+
+<tr><td>nicht</td><td>9.46</td></tr>
+
+<tr><td>ein</td><td>9.38</td></tr>
+
+<tr><td>war</td><td>9.0</td></tr>
+
+<tr><td>von</td><td>7.41</td></tr>
+
+<tr><td>auf</td><td>7.2</td></tr>
+
+<tr><td>dem</td><td>6.9</td></tr>
+
+<tr><td>daß</td><td>6.41</td></tr>
+
+<tr><td>aber</td><td>6.02</td></tr>
+
+<tr><td>ist</td><td>5.51</td></tr>
+
+<tr><td>eine</td><td>5.41</td></tr>
+
+<tr><td>so</td><td>5.28</td></tr>
+
+<tr><td>an</td><td>5.25</td></tr>
+
+<tr><td>hatte</td><td>4.98</td></tr>
+
+<tr><td>wie</td><td>4.84</td></tr>
+
+<tr><td>du</td><td>4.69</td></tr>
+
+<tr><td>als</td><td>4.5</td></tr>
+
+<tr><td>im</td><td>4.18</td></tr>
+
+</table>
+
+<h2>3. Syntax</h2>
+<div class="metric-grid">
+
+  <div class="metric"><span class="label">noun_ratio</span><span class="value">0.1876</span></div>
+
+  <div class="metric"><span class="label">verb_ratio</span><span class="value">0.1201</span></div>
+
+  <div class="metric"><span class="label">adj_ratio</span><span class="value">0.0589</span></div>
+
+  <div class="metric"><span class="label">adv_ratio</span><span class="value">0.116</span></div>
+
+  <div class="metric"><span class="label">noun_to_verb_ratio</span><span class="value">1.29</span></div>
+
+  <div class="metric"><span class="label">avg_parse_tree_depth</span><span class="value">5.27</span></div>
+
+</div>
+
+<h2>4. Punctuation Profile (per 1000 words)</h2>
+<div class="metric-grid">
+
+  <div class="metric"><span class="label">em_dash</span><span class="value">3.3</span></div>
+
+  <div class="metric"><span class="label">semicolon</span><span class="value">3.35</span></div>
+
+  <div class="metric"><span class="label">colon</span><span class="value">3.33</span></div>
+
+  <div class="metric"><span class="label">parentheses</span><span class="value">0.06</span></div>
+
+  <div class="metric"><span class="label">ellipsis</span><span class="value">17.39</span></div>
+
+  <div class="metric"><span class="label">exclamation</span><span class="value">9.52</span></div>
+
+  <div class="metric"><span class="label">question_mark</span><span class="value">5.45</span></div>
+
+  <div class="metric"><span class="label">comma</span><span class="value">107.49</span></div>
+
+</div>
+
+<h2>5. Burstiness (Sentence-Length Rhythm)</h2>
+<div class="metric-grid">
+
+  <div class="metric"><span class="label">mean_sentence_length</span><span class="value">19.16</span></div>
+
+  <div class="metric"><span class="label">stdev_sentence_length</span><span class="value">16.1</span></div>
+
+  <div class="metric"><span class="label">min_sentence_length</span><span class="value">1</span></div>
+
+  <div class="metric"><span class="label">max_sentence_length</span><span class="value">163</span></div>
+
+  <div class="metric"><span class="label">burstiness</span><span class="value">-0.0869</span></div>
+
+</div>
+
+<h2>6. Perspective &amp; Stance (heuristic)</h2>
+<div class="metric-grid">
+<div class="metric"><span class="label">rhetorical_<wbr>question_<wbr>rate_<wbr>per_<wbr>100_<wbr>sentences</span><span class="value">6.74</span></div>
+<div class="metric"><span class="label">hedging_<wbr>rate_<wbr>per_<wbr>1000_<wbr>words</span><span class="value">2.09</span></div>
+<div class="metric"><span class="label">assertiveness_<wbr>rate_<wbr>per_<wbr>1000_<wbr>words</span><span class="value">2.77</span></div>
+<div class="metric"><span class="label">rule_<wbr>of_<wbr>three_<wbr>occurrences</span><span class="value">24</span></div>
+<div class="metric"><span class="label">narrative_<wbr>voice</span><span class="value">third_person</span></div>
+</div>
+<p><strong>Pronoun distribution:</strong>
+third_person: 15032&nbsp;&nbsp;first_person: 4505&nbsp;&nbsp;impersonal: 2224&nbsp;&nbsp;second_person: 1874&nbsp;&nbsp;
+</p>
+<p><strong>Anaphora (repeated sentence openers):</strong>
+"der" (1112x)&nbsp;&nbsp;"er" (804x)&nbsp;&nbsp;"ich" (626x)&nbsp;&nbsp;"und" (592x)&nbsp;&nbsp;"aber" (559x)&nbsp;&nbsp;
+
+</p>
+
+
+
+</body>
+</html>

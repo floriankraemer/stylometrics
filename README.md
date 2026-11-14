@@ -96,7 +96,7 @@ See [docs/mcp.md](docs/mcp.md) for the reference and client setup for Claude Cod
 
 ## Examples
 
-`examples/` contains seven public-domain texts with their generated reports, from Marcus Aurelius's *Meditations* to Thoreau's *Walden*.
+`examples/` contains ten public-domain texts with their generated reports, two of them in German, from Marcus Aurelius's *Meditations* to Thomas Mann's *Buddenbrooks*.
 See [docs/examples.md](docs/examples.md) for where the texts come from, the measured results side by side, and how to read them.
 
 ## Documentation
