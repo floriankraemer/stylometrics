@@ -116,6 +116,11 @@ def run_stdio() -> None:
 def _stop(*_) -> None:
     # The SDK reads stdin in a worker thread blocked in read(): asyncio's own Ctrl+C handling cancels the server, then
     # waits for that thread forever. Exit at once instead; nothing is left to flush, requests are answered as they come.
-    log.info("Stopped.")
-    logging.shutdown()
-    os._exit(130)
+    # The signal can land while the main thread is inside a write to sys.stderr (e.g. the startup banner), where
+    # logging would hit "reentrant call inside BufferedWriter" and never reach the exit, so write to fd 2 directly.
+    try:
+        record = log.makeRecord(log.name, logging.INFO, __file__, 0, "Stopped.", None, None)
+        fmt = next((h.formatter for h in logging.getLogger().handlers if h.formatter), logging.Formatter())
+        os.write(2, (fmt.format(record) + "\n").encode())
+    finally:
+        os._exit(130)
