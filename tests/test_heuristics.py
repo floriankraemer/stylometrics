@@ -45,6 +45,11 @@ class HeuristicsTest(unittest.TestCase):
                 "The castle stood silent behind him, and the guards watched the road.")
         self.assertEqual(run(text)["narrative_voice"], "third_person")
 
+    def test_voice_ignores_single_quote_dialogue(self):
+        text = ("The king rode out at dawn. 'I will find you,' he said, 'and you will know me.'\n\n"
+                "The castle stood silent behind him, and the guards watched the road.")
+        self.assertEqual(run(text)["narrative_voice"], "third_person")
+
     def test_voice_multi_paragraph_quote(self):
         text = ("The old man spoke at length.\n\n"
                 "“I was young then, and I loved the sea.\n\n"
