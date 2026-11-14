@@ -5,16 +5,21 @@ from dataclasses import dataclass, field
 
 import spacy
 
+from stylometry.language import LANGUAGES
+
 log = logging.getLogger("stylometry")
-_nlp = None
+_models = {}
 _CHUNK_RE = re.compile(r"\n\s*\n")
 
 
-def get_nlp():
-    global _nlp
-    if _nlp is None:
-        _nlp = spacy.load("en_core_web_sm")
-    return _nlp
+def get_nlp(lang: str = "en"):
+    if lang not in _models:
+        model = LANGUAGES[lang]["model"]
+        try:
+            _models[lang] = spacy.load(model)
+        except OSError as e:
+            raise OSError(f"spaCy model {model} is not installed: python -m spacy download {model}") from e
+    return _models[lang]
 
 
 @dataclass
@@ -23,6 +28,7 @@ class Analysis:
     sentences: list = field(default_factory=list)
     words: list = field(default_factory=list)  # alpha tokens, lowercased text
     raw_text: str = ""
+    lang: str = "en"
 
 
 def _chunk(text: str, target_size: int = 50_000) -> list:
@@ -40,8 +46,8 @@ def _chunk(text: str, target_size: int = 50_000) -> list:
     return chunks or [text]
 
 
-def analyze(text: str) -> Analysis:
-    nlp = get_nlp()
+def analyze(text: str, lang: str = "en") -> Analysis:
+    nlp = get_nlp(lang)
     # spaCy's default max_length is 1_000_000 chars; raise it for book-length input.
     nlp.max_length = max(nlp.max_length, len(text) + 1000)
 
@@ -54,4 +60,4 @@ def analyze(text: str) -> Analysis:
 
     sentences = list(doc.sents)
     words = [t for t in doc if t.is_alpha]
-    return Analysis(doc=doc, sentences=sentences, words=words, raw_text=text)
+    return Analysis(doc=doc, sentences=sentences, words=words, raw_text=text, lang=lang)

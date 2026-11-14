@@ -25,6 +25,7 @@ INSTRUCTIONS = ("Stylometric analysis of writing: lexical diversity, function wo
                 "Use compare to contrast two sources, and the write_like prompt to write in a source's style.")
 DEFAULT_TASK = "Write a short passage in this style."
 Provider = Literal["anthropic", "openai"]
+Lang = Literal["auto", "en", "de"]
 log = logging.getLogger("stylometry")
 
 
@@ -55,14 +56,17 @@ def build_mcp(local_files: bool = False) -> MCPServer:
     @mcp.tool()
     async def analyze(text: str | None = None, url: str | None = None, name: str | None = None,
                       crawl: bool = False, max_pages: Annotated[int, Field(ge=1)] = 50, llm: bool = False,
-                      provider: Provider = "anthropic", include: list[str] | None = None) -> dict[str, Any]:
+                      provider: Provider = "anthropic", lang: Lang = "auto",
+                      include: list[str] | None = None) -> dict[str, Any]:
         """Analyze the writing style of a text or a web page.
 
         Give exactly one of `text` or `url`. `crawl` follows same-domain links up to `max_pages`.
         `llm` adds an LLM-assisted qualitative pass (needs a provider key on the server).
+        `lang` is the text language: "auto" (default) detects English or German.
         `include` may contain "profile_md" and "clone_prompt" for rendered Markdown.
         """
-        body = _request(text=text, url=url, name=name, crawl=crawl, max_pages=max_pages, llm=llm, provider=provider)
+        body = _request(text=text, url=url, name=name, crawl=crawl, max_pages=max_pages, llm=llm, provider=provider,
+                       lang=lang)
         return await _run(service.analyze_request, body, include or [])
 
     @mcp.tool()
@@ -88,9 +92,9 @@ def build_mcp(local_files: bool = False) -> MCPServer:
     if local_files:
         @mcp.tool()
         async def analyze_file(path: str, name: str | None = None, llm: bool = False, provider: Provider = "anthropic",
-                               include: list[str] | None = None) -> dict[str, Any]:
+                               lang: Lang = "auto", include: list[str] | None = None) -> dict[str, Any]:
             """Analyze the writing style of a file on this machine (.pdf .docx .epub .html .htm .txt .md)."""
-            return await _run(service.analyze_path, path, name, llm, provider, include or [])
+            return await _run(service.analyze_path, path, name, llm, provider, include or [], lang)
 
     return mcp
 

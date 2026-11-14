@@ -28,6 +28,7 @@ Analyzes a text or a web page and returns the same profile as [`POST /analyze`](
 | `max_pages` | `50` | With `crawl`: page limit, at least 1, clamped to `MAX_PAGES_CAP`. |
 | `llm` | `false` | Add the LLM-assisted qualitative pass. |
 | `provider` | `anthropic` | `anthropic` or `openai`. |
+| `lang` | `auto` | Text language: `auto` (detects English or German), `en` or `de`. |
 | `include` | none | List with `profile_md` and/or `clone_prompt`, added under `rendered`. |
 
 Give exactly one of `text` or `url`.
@@ -81,6 +82,7 @@ Analyzes a file on the machine that runs the server.
 | `name` | the file name | Source name used in the output. |
 | `llm` | `false` | Add the LLM-assisted qualitative pass. |
 | `provider` | `anthropic` | `anthropic` or `openai`. |
+| `lang` | `auto` | Text language: `auto` (detects English or German), `en` or `de`. |
 | `include` | none | As for `analyze`. |
 
 The tool is registered only for stdio.

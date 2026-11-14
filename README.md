@@ -61,6 +61,12 @@ Supported inputs are PDF, DOCX, plain text / Markdown, EPUB, a single web page (
 With a binary, pass the file or URL directly: `stylometry some-book.pdf`, plus `--crawl --max-pages N` for sites.
 `make help` and [docs/development.md](docs/development.md#make-targets) list all `make` targets.
 
+### Languages
+
+English and German are supported.
+The language is detected from the text; force it with `--lang en` or `--lang de`.
+The German model is `de_core_news_sm`, and the word lists, quote marks and dash style for each language are in [`src/stylometry/language.py`](src/stylometry/language.py).
+
 ### Optional LLM-assisted qualitative pass
 
 Off by default (fully offline otherwise).

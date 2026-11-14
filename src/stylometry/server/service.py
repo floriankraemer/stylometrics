@@ -28,6 +28,7 @@ class AnalyzeRequest(BaseModel):
     max_pages: int = Field(50, ge=1)
     llm: bool = False
     provider: str = Field("anthropic", pattern="^(anthropic|openai)$")
+    lang: str = Field("auto", pattern="^(auto|en|de)$", description="text language; auto detects English or German")
 
     @model_validator(mode="after")
     def _one_source(self):
@@ -56,11 +57,11 @@ def _guard(url: str) -> None:
         raise Problem(400, "url-not-allowed", "URL Not Allowed", str(e)) from e
 
 
-def _analyze(text: str, name: str, llm: bool, provider: str, include: list[str]) -> dict:
+def _analyze(text: str, name: str, llm: bool, provider: str, include: list[str], lang: str = "auto") -> dict:
     if not text.strip():
         raise Problem(422, "empty-text", "No Text", "No text could be extracted from the input.")
     try:
-        profile = pipeline.run(text, name, llm=llm, provider=provider)
+        profile = pipeline.run(text, name, llm=llm, provider=provider, lang=lang)
     except pipeline.LLMError as e:
         raise Problem(502, "llm-upstream-error", "LLM Provider Error", str(e)) from e
     if include:
@@ -88,19 +89,20 @@ def analyze_request(body: AnalyzeRequest, include: list[str]) -> dict:
     _check_include(include)
     _check_llm(body.llm, body.provider)
     if body.text is not None:
-        return _analyze(body.text, body.name or "text", body.llm, body.provider, include)
+        return _analyze(body.text, body.name or "text", body.llm, body.provider, include, body.lang)
     if os.environ.get("ALLOW_URL", "1") == "0":
         raise Problem(403, "url-not-allowed", "URL Not Allowed", "URL sources are disabled on this server.")
     text = _load(body.url, crawl=body.crawl, guard=_guard,
                  max_pages=min(body.max_pages, int_env("MAX_PAGES_CAP", 50)))
     name = body.name or body.url.rstrip("/").split("/")[-1] or urlparse(body.url).hostname
-    return _analyze(text, name, body.llm, body.provider, include)
+    return _analyze(text, name, body.llm, body.provider, include, body.lang)
 
 
-def analyze_path(path: str, name: str | None, llm: bool, provider: str, include: list[str]) -> dict:
+def analyze_path(path: str, name: str | None, llm: bool, provider: str, include: list[str],
+                 lang: str = "auto") -> dict:
     """Analyze a file on the local filesystem. Only for trusted callers (stdio), never exposed over HTTP."""
     _check_include(include)
     _check_llm(llm, provider)
     if not Path(path).is_file():
         raise Problem(404, "file-not-found", "File Not Found", f"No such file: {path}")
-    return _analyze(_load(path), name or Path(path).name, llm, provider, include)
+    return _analyze(_load(path), name or Path(path).name, llm, provider, include, lang)

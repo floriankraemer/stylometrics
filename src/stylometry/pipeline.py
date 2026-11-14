@@ -1,6 +1,7 @@
 """Text -> profile, shared by the CLI and the HTTP server."""
 import threading
 
+from stylometry.language import resolve
 from stylometry.preprocess import analyze
 from stylometry.qualitative import llm as llm_qualitative
 from stylometry.report.profile import build
@@ -14,9 +15,10 @@ class LLMError(Exception):
     """The LLM provider call failed."""
 
 
-def run(text: str, source_name: str, llm: bool = False, provider: str = "anthropic") -> dict:
+def run(text: str, source_name: str, llm: bool = False, provider: str = "anthropic",
+        lang: str = "auto") -> dict:
     with _lock:
-        analysis = analyze(text)
+        analysis = analyze(text, resolve(lang, text))
     llm_result = None
     if llm:
         preliminary = build(analysis, source_name)
